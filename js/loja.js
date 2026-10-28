@@ -170,7 +170,7 @@
     var img = p.images && p.images[0] ? '<img src="' + MM.img(p.images[0]) + '" alt="' + esc(p.name) + '" loading="lazy">' : phHTML();
     var enc = isEnc(p), soldOut = !enc && p.stock === 0, promo = p.promo_cents && p.promo_cents < p.price_cents;
     var tag = soldOut ? '<span class="tag">Esgotado</span>' : promo ? '<span class="tag sale">-' + Math.round(100 - p.promo_cents / p.price_cents * 100) + '%</span>' : p.featured ? '<span class="tag">Destaque</span>' : '';
-    if (enc) tag += '<span class="tag enc">Sob encomenda</span>';
+    if (enc) tag += '<span class="tag enc">' + (p.images && p.images.length ? 'Sob encomenda' : 'Fotos em breve') + '</span>';
     if (noPrice(p)) {
       return '<article class="prod" id="p-' + esc(p.id) + '"><button type="button" class="prod-media" data-open="' + esc(p.id) + '" aria-label="Ver ' + esc(p.name) + '">' + img + tag + '</button>' +
         '<div class="prod-info">' + (enc ? '' : '<span class="prod-cat">' + esc(p.category) + '</span>') + '<h3 class="prod-name">' + esc(p.name) + (p.sizes && p.sizes.length ? ' · ' + esc(p.sizes.join('/')) : '') + '</h3>' +
