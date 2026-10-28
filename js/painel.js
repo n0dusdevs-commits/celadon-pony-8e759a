@@ -350,7 +350,7 @@
       $('#drop').hidden = imgs.length >= 6;
     }
     thumbs();
-    function kindUI() { var enc = $('#f_kind').value === 'encomenda'; $$('[data-pronta]').forEach(function (el) { el.hidden = enc; }); $('#kindHint').textContent = enc ? 'Sem controle de estoque. Entra no pedido mínimo de encomendas e na lista “Comprar no fornecedor”.' : 'Controla estoque e entra no relatório do repasse.'; }
+    function kindUI() { var enc = $('#f_kind').value === 'encomenda'; $$('[data-pronta]').forEach(function (el) { el.hidden = enc; }); $('#kindHint').textContent = enc ? 'Sem controle de estoque. A categoria é a linha: o pedido mínimo vale para cada linha. Entra na lista “Comprar no fornecedor”.' : 'Controla estoque e entra no relatório do repasse.'; }
     $('#f_kind').addEventListener('change', kindUI); kindUI();
     $('#thumbs').addEventListener('click', function (e) {
       var rm = e.target.closest('[data-rm]'); if (rm) { removed.push(imgs.splice(Number(rm.getAttribute('data-rm')), 1)[0]); thumbs(); }
@@ -454,7 +454,7 @@
         inp('installments_note', 'Aviso que a cliente vê sobre o parcelamento', { area: true, full: true }) +
         '<h3 class="full">Peças sob encomenda</h3>' +
         '<div class="field"><label for="s_enc">Vender sob encomenda</label><select id="s_enc" name="encomenda_enabled"><option value="1"' + (s.encomenda_enabled !== false ? ' selected' : '') + '>Sim</option><option value="0"' + (s.encomenda_enabled === false ? ' selected' : '') + '>Pausar encomendas</option></select></div>' +
-        '<div class="field"><label for="s_encmin">Pedido mínimo em encomendas (R$)</label><input id="s_encmin" name="encomenda_min" inputmode="decimal" value="' + money(Number(s.encomenda_min_cents) || 0) + '"><small>Soma só das peças sob encomenda. Use 0 para sem mínimo.</small></div>' +
+        '<div class="field"><label for="s_encmin">Pedido mínimo por linha sob encomenda (R$)</label><input id="s_encmin" name="encomenda_min" inputmode="decimal" value="' + money(Number(s.encomenda_min_cents) || 0) + '"><small>Vale para cada linha (categoria) separada, por exemplo R$350 em Camiseta Oversized. Use 0 para sem mínimo.</small></div>' +
         inp('encomenda_prazo', 'Prazo estimado de chegada (opcional)', { ph: 'Ex.: 7 a 15 dias úteis' }) +
         inp('encomenda_note', 'Aviso que a cliente vê sobre encomendas', { area: true, full: true }) +
         '<h3 class="full">Textos do site</h3>' +
@@ -472,7 +472,7 @@
         d.installments_enabled = f.installments_enabled.value === '1';
         d.encomenda_enabled = f.encomenda_enabled.value === '1';
         var mn = String(f.encomenda_min.value).trim() === '' || Number(String(f.encomenda_min.value).replace(',', '.')) === 0 ? 0 : cents(f.encomenda_min.value);
-        if (isNaN(mn)) { err.textContent = 'Valor mínimo inválido (ex.: 450,00).'; return; }
+        if (isNaN(mn)) { err.textContent = 'Valor mínimo inválido (ex.: 350,00).'; return; }
         d.encomenda_min_cents = mn; d.encomenda_prazo = f.encomenda_prazo.value.trim(); d.encomenda_note = f.encomenda_note.value.trim();
         if (!d.store_name) d.store_name = 'May Modas';
         if (!d.hero_title) d.hero_title = MM.DEFAULTS.hero_title;

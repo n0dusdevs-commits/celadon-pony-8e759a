@@ -17,7 +17,7 @@
   function minEnc() { return Number(S.encomenda_min_cents) || 0; }
   function encNoteText() {
     return (S.encomenda_note || '') + (S.encomenda_prazo ? ' Prazo estimado: ' + S.encomenda_prazo + '.' : '') +
-      (minEnc() ? ' Pedido mínimo de ' + brl(minEnc()) + ' em peças sob encomenda (pode somar várias peças).' : '');
+      (minEnc() ? ' Pedido mínimo de ' + brl(minEnc()) + ' por linha (por exemplo, ' + brl(minEnc()) + ' em camisetas oversized). Dá para somar modelos, cores e tamanhos da mesma linha.' : '');
   }
   var toastT;
   function toast(msg) { var t = $('#toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toastT); toastT = setTimeout(function () { t.classList.remove('show'); }, 2600); }
@@ -60,8 +60,9 @@
     $('#footSocial').innerHTML = social.join('');
     $('#year').textContent = new Date().getFullYear();
     var hasEnc = encOn() && PRODUCTS.some(isEnc), hasPronta = PRODUCTS.some(function (p) { return !isEnc(p); });
-    $('#kindTabs').hidden = !(hasEnc && hasPronta);
-    $('#kindEncSub').textContent = minEnc() ? 'Mais barato · mín. ' + brl(minEnc()) : 'Mais barato';
+    $('#encomenda').hidden = !hasEnc;
+    $$('[data-enc-link]').forEach(function (a) { a.hidden = !hasEnc; });
+    $('#encLead').textContent = 'Peças pedidas ao fabricante depois da sua compra, por isso saem mais em conta.' + (minEnc() ? ' Cada linha tem pedido mínimo de ' + brl(minEnc()) + '.' : '');
     $('#faqEncItem').hidden = !hasEnc;
     $('#faqEnc').textContent = 'São peças que a lojista busca direto no fornecedor depois do seu pedido, por isso o preço é menor. ' + encNoteText() + ' Pagamento em PIX, dinheiro ou cartão parcelado.';
     var cats = {}; PRODUCTS.forEach(function (p) { cats[p.category] = 1; });
@@ -152,7 +153,7 @@
   function askLink(p, size) { var wa = digits(S.whatsapp); return wa ? 'https://wa.me/' + wa + '?text=' + encodeURIComponent('Olá! Quero saber o valor desta peça: ' + p.name + (size ? ' (tam. ' + size + ')' : (p.sizes && p.sizes.length ? ' (tam. ' + p.sizes.join('/') + ')' : '')) + ' - ' + location.origin + location.pathname + '#p-' + p.id) : '#contato'; }
   function instLine() { return instOn() ? '<span class="inst">Parcelamento sem cartão com a lojista</span>' : ''; }
   function renderCats() {
-    var cats = []; PRODUCTS.forEach(function (p) { if (cats.indexOf(p.category) < 0) cats.push(p.category); });
+    var cats = []; PRODUCTS.filter(function (p) { return !isEnc(p); }).forEach(function (p) { if (cats.indexOf(p.category) < 0) cats.push(p.category); });
     cats.sort(function (a, b) { return a.localeCompare(b, 'pt-BR'); });
     $('#catChips').innerHTML = cats.length > 1 ? ['<button type="button" class="chip on" data-cat="">Tudo</button>'].concat(cats.map(function (c) { return '<button type="button" class="chip" data-cat="' + esc(c) + '">' + esc(c) + '</button>'; })).join('') : '';
   }
@@ -161,7 +162,7 @@
     return PRODUCTS.filter(function (p) {
       return (!filter.gender || p.gender === filter.gender || (filter.gender !== 'unissex' && p.gender === 'unissex')) &&
         (!filter.cat || p.category === filter.cat) &&
-        (!filter.kind || (p.availability || 'pronta') === filter.kind) &&
+        !isEnc(p) &&
         (!qq || (p.name + ' ' + p.category + ' ' + (p.description || '')).toLowerCase().indexOf(qq) >= 0);
     });
   }
@@ -172,14 +173,14 @@
     if (enc) tag += '<span class="tag enc">Sob encomenda</span>';
     if (noPrice(p)) {
       return '<article class="prod" id="p-' + esc(p.id) + '"><button type="button" class="prod-media" data-open="' + esc(p.id) + '" aria-label="Ver ' + esc(p.name) + '">' + img + tag + '</button>' +
-        '<div class="prod-info">' + (enc ? '<span class="kind-line enc">Sob encomenda</span>' : '') + '<span class="prod-cat">' + esc(p.category) + '</span><h3 class="prod-name">' + esc(p.name) + (p.sizes && p.sizes.length ? ' · ' + esc(p.sizes.join('/')) : '') + '</h3>' +
+        '<div class="prod-info">' + (enc ? '' : '<span class="prod-cat">' + esc(p.category) + '</span>') + '<h3 class="prod-name">' + esc(p.name) + (p.sizes && p.sizes.length ? ' · ' + esc(p.sizes.join('/')) : '') + '</h3>' +
         '<div class="price"><strong class="ask">Preço sob consulta</strong></div>' +
         '<a class="btn btn-dark btn-block prod-add" href="' + esc(askLink(p)) + '" target="_blank" rel="noopener">' + icon('whatsapp') + ' Consultar valor</a></div></article>';
     }
     return '<article class="prod"><button type="button" class="prod-media" data-open="' + esc(p.id) + '" aria-label="Ver ' + esc(p.name) + '">' + img + tag + '</button>' +
-      '<div class="prod-info">' + (enc ? '<span class="kind-line enc">Sob encomenda</span>' : '') + '<span class="prod-cat">' + esc(p.category) + '</span><h3 class="prod-name">' + esc(p.name) + '</h3>' +
+      '<div class="prod-info">' + (enc ? '' : '<span class="prod-cat">' + esc(p.category) + '</span>') + '<h3 class="prod-name">' + esc(p.name) + '</h3>' +
       '<div class="price">' + (promo ? '<s>' + brl(p.price_cents) + '</s>' : '') + '<strong>' + brl(priceOf(p)) + '</strong></div>' +
-      (enc ? '<span class="inst">' + (minEnc() ? 'Mín. ' + brl(minEnc()) + ' em encomendas' : 'Cartão parcelado') + '</span>' : instLine()) +
+      (enc ? '<span class="inst">' + (minEnc() ? 'Mín. ' + brl(minEnc()) + ' nesta linha' : 'Cartão parcelado') + '</span>' : instLine()) +
       '<button type="button" class="btn btn-dark btn-block prod-add" data-open="' + esc(p.id) + '"' + (soldOut ? ' disabled' : '') + '>' + (soldOut ? 'Esgotado' : 'Escolher') + '</button></div></article>';
   }
   function renderGrid(animate, msg) {
@@ -188,7 +189,7 @@
       grid.innerHTML = list.map(cardHTML).join('');
       var empty = $('#empty');
       if (msg) { empty.textContent = msg; empty.hidden = false; }
-      else if (!PRODUCTS.length) { empty.textContent = 'Em breve novidades por aqui. A vitrine está sendo montada com carinho.'; empty.hidden = false; }
+      else if (!PRODUCTS.some(function (p) { return !isEnc(p); })) { empty.textContent = 'Em breve novidades por aqui. A vitrine está sendo montada com carinho.'; empty.hidden = false; }
       else if (!list.length) { empty.textContent = 'Nenhuma peça encontrada com esses filtros.'; empty.hidden = false; }
       else empty.hidden = true;
       if (A && animate) A({ targets: '#grid .prod', opacity: [0, 1], translateY: [24, 0], scale: [0.97, 1], duration: 600, delay: A.stagger(45), easing: 'easeOutCubic' });
@@ -199,13 +200,23 @@
   function setChip(wrap, btn) { $$('.chip', wrap).forEach(function (c) { c.classList.toggle('on', c === btn); }); }
   $('#genderChips').addEventListener('click', function (e) { var b = e.target.closest('.chip'); if (!b) return; setChip($('#genderChips'), b); filter.gender = b.getAttribute('data-gender'); renderGrid(true); });
   $('#catChips').addEventListener('click', function (e) { var b = e.target.closest('.chip'); if (!b) return; setChip($('#catChips'), b); filter.cat = b.getAttribute('data-cat'); renderGrid(true); });
-  $('#kindTabs').addEventListener('click', function (e) {
-    var b = e.target.closest('.kind'); if (!b) return;
-    $$('.kind', $('#kindTabs')).forEach(function (c) { c.classList.toggle('on', c === b); });
-    filter.kind = b.getAttribute('data-kind');
-    var n = $('#encNote'); n.hidden = filter.kind !== 'encomenda'; n.textContent = encNoteText();
-    renderGrid(true);
-  });
+  /* Vitrine sob encomenda: uma seção por linha (categoria), cada uma com seu pedido mínimo */
+  function encLines() {
+    var order = [], map = {};
+    PRODUCTS.filter(isEnc).forEach(function (p) { if (!map[p.category]) { map[p.category] = []; order.push(p.category); } map[p.category].push(p); });
+    return order.map(function (c) { return { name: c, items: map[c] }; });
+  }
+  function slug(t) { return 'linha-' + String(t).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''); }
+  function renderEnc() {
+    var lines = encOn() ? encLines() : [];
+    $('#encChips').innerHTML = lines.length > 1 ? lines.map(function (l) { return '<a class="chip" href="#' + slug(l.name) + '">' + esc(l.name) + '</a>'; }).join('') : '';
+    $('#encLines').innerHTML = lines.map(function (l) {
+      return '<div class="enc-line" id="' + slug(l.name) + '"><div class="enc-line-head"><h3>' + esc(l.name) + '</h3>' +
+        (minEnc() ? '<span class="enc-min">Pedido mínimo nesta linha: <strong>' + brl(minEnc()) + '</strong></span>' : '') + '</div>' +
+        '<div class="grid">' + l.items.map(cardHTML).join('') + '</div></div>';
+    }).join('');
+  }
+  $('#encLines').addEventListener('click', function (e) { var b = e.target.closest('[data-open]'); if (b && !b.disabled) openProduct(b.getAttribute('data-open')); });
   var qT; $('#q').addEventListener('input', function (e) { clearTimeout(qT); qT = setTimeout(function () { filter.q = e.target.value; renderGrid(true); }, 200); });
   $('#grid').addEventListener('click', function (e) { var b = e.target.closest('[data-open]'); if (b && !b.disabled) openProduct(b.getAttribute('data-open')); });
 
@@ -304,7 +315,11 @@
   function splitBag() {
     var items = bagItems(), pr = items.filter(function (x) { return !isEnc(x.p); }), en = items.filter(function (x) { return isEnc(x.p); });
     var sum = function (a) { return a.reduce(function (s, x) { return s + priceOf(x.p) * x.ref.qty; }, 0); };
-    return { items: items, pronta: pr, enc: en, prontaCents: sum(pr), encCents: sum(en) };
+    var groups = [], gm = {};
+    en.forEach(function (x) { var c = x.p.category; if (!gm[c]) { gm[c] = { name: c, items: [] }; groups.push(gm[c]); } gm[c].items.push(x); });
+    groups.forEach(function (g) { g.cents = sum(g.items); });
+    var short = groups.some(function (g) { return g.cents < minEnc(); });
+    return { items: items, pronta: pr, enc: en, encGroups: groups, encShort: short, prontaCents: sum(pr), encCents: sum(en) };
   }
   function lineHTML(x) {
     var p = x.p, i = x.ref, idx = bag.indexOf(i);
@@ -313,10 +328,10 @@
     return '<div class="line" data-idx="' + idx + '">' + img + '<div><h3>' + esc(p.name) + '</h3>' + (opts ? '<small>' + opts + '</small>' : '') + '<small>' + brl(priceOf(p)) + '</small></div>' +
       '<div class="line-right"><div class="qty" role="group" aria-label="Quantidade"><button type="button" data-step="-1" aria-label="Diminuir">' + icon('minus') + '</button><output>' + i.qty + '</output><button type="button" data-step="1" aria-label="Aumentar">' + icon('plus') + '</button></div><button type="button" class="linklike" data-remove>Remover</button></div></div>';
   }
-  function minBarHTML(encCents) {
+  function minBarHTML(encCents, line) {
     var min = minEnc(); if (!min) return '';
     var okk = encCents >= min, pct = Math.min(100, Math.round(encCents / min * 100));
-    return '<div class="min-bar' + (okk ? ' ok' : '') + '"><span>' + (okk ? '✓ Pedido mínimo de encomenda atingido' : 'Faltam <strong>' + brl(min - encCents) + '</strong> em peças sob encomenda para atingir o mínimo de ' + brl(min) + '.') + '</span><div class="min-track"><span style="width:' + pct + '%"></span></div></div>';
+    return '<div class="min-bar' + (okk ? ' ok' : '') + '"><span>' + (okk ? '✓ Mínimo da linha ' + esc(line) + ' atingido' : 'Faltam <strong>' + brl(min - encCents) + '</strong> em ' + esc(line) + ' para atingir o mínimo de ' + brl(min) + ' desta linha.') + '</span><div class="min-track"><span style="width:' + pct + '%"></span></div></div>';
   }
   function renderBag() {
     var body = $('#drawerBody'), b = splitBag();
@@ -325,16 +340,16 @@
       body.innerHTML = '<div class="drawer-empty">' + icon('bag') + '<p>Sua sacola está vazia.</p><a class="btn btn-dark" href="#catalogo" id="goShop">Ver as peças</a></div>';
       $('#goShop').addEventListener('click', closeDrawer); return;
     }
-    var both = b.pronta.length && b.enc.length, encShort = b.enc.length && b.encCents < minEnc();
+    var both = b.pronta.length && b.enc.length, encShort = b.encShort;
     var html = '';
     if (b.pronta.length) html += '<div class="bag-group">' + (both ? '<h3 class="gh"><span>Pronta entrega</span><span>' + brl(b.prontaCents) + '</span></h3>' : '') + b.pronta.map(lineHTML).join('') + '</div>';
-    if (b.enc.length) html += '<div class="bag-group"><h3 class="gh"><span>Sob encomenda</span><span>' + brl(b.encCents) + '</span></h3>' + b.enc.map(lineHTML).join('') + minBarHTML(b.encCents) + '</div>';
+    b.encGroups.forEach(function (g) { html += '<div class="bag-group"><h3 class="gh"><span>Sob encomenda · ' + esc(g.name) + '</span><span>' + brl(g.cents) + '</span></h3>' + g.items.map(lineHTML).join('') + minBarHTML(g.cents, g.name) + '</div>'; });
     var t = b.prontaCents + b.encCents;
     html += '<div class="summary"><div class="row total"><span>Total</span><span>' + brl(t) + '</span></div>' +
       (b.pronta.length && instOn() ? '<div class="row"><small class="inst">Pronta entrega: pode parcelar sem cartão com a lojista.</small></div>' : '') +
       (b.enc.length ? '<div class="row"><small class="inst">Sob encomenda: PIX, dinheiro ou cartão parcelado.</small></div>' : '') +
       '<button type="button" class="btn btn-gold btn-block" id="toCheckout"' + (encShort ? ' disabled' : '') + '>Finalizar pedido ' + icon('arrow') + '</button>' +
-      (encShort ? '<small class="err c">Complete o mínimo das peças sob encomenda ou remova-as para finalizar.</small>' : '') + '</div>';
+      (encShort ? '<small class="err c">Complete o mínimo de cada linha sob encomenda ou remova as peças dela para finalizar.</small>' : '') + '</div>';
     body.innerHTML = html;
     $$('.line', body).forEach(function (row) {
       var ref = bag[Number(row.getAttribute('data-idx'))], p = findP(ref.id);
@@ -350,7 +365,7 @@
   function payOpt(name, value, title, sub) { return '<label class="pay"><input type="radio" name="' + name + '" value="' + value + '"><span><strong>' + title + '</strong><small>' + sub + '</small></span></label>'; }
   function renderCheckout() {
     var body = $('#drawerBody'), b = splitBag(), t = b.prontaCents + b.encCents, wa = digits(S.whatsapp);
-    if (b.enc.length && b.encCents < minEnc()) return renderBag();
+    if (b.encShort) return renderBag();
     var both = b.pronta.length && b.enc.length;
     var saved = store('mm_customer') || {};
     $('#drawerTitle').textContent = 'Finalizar pedido';
@@ -494,7 +509,7 @@
   applySettings();
   renderGrid(false, 'Carregando peças...');
   loadData().then(function () {
-    applySettings(); renderCats(); renderGrid(false); updateBadge();
+    applySettings(); renderCats(); renderGrid(false); renderEnc(); updateBadge();
   }).catch(function () {
     renderGrid(false, 'Não foi possível carregar as peças agora. Verifique sua internet e atualize a página.');
   }).then(function () {

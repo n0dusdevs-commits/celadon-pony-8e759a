@@ -16,7 +16,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=20261028b">
+<link rel="stylesheet" href="css/style.css?v=20261028c">
 </head>
 <body>
 <svg width="0" height="0" class="sprite" aria-hidden="true" focusable="false">
@@ -46,7 +46,7 @@
   <div class="wrap header-in">
     <a class="brand" href="#inicio" aria-label="Início" id="brand"></a>
     <nav class="nav" id="nav" aria-label="Principal">
-      <a href="#catalogo">Peças</a><a href="#como-funciona">Como comprar</a><a href="#sobre">Sobre</a><a href="#faq">Dúvidas</a><a href="#contato">Contato</a>
+      <a href="#catalogo">Pronta entrega</a><a href="#encomenda" data-enc-link hidden>Sob encomenda</a><a href="#como-funciona">Como comprar</a><a href="#sobre">Sobre</a><a href="#faq">Dúvidas</a><a href="#contato">Contato</a>
     </nav>
     <div class="header-actions">
       <button class="icon-btn" id="bagBtn" type="button" aria-label="Abrir sacola"><svg class="ico"><use href="#i-bag"/></svg><span class="bag-count" id="bagCount" hidden>0</span></button>
@@ -122,22 +122,23 @@
   </section>
   <section class="section" id="catalogo" aria-labelledby="catTitle">
     <div class="wrap">
-      <header class="section-head reveal"><p class="kicker">Vitrine</p><h2 id="catTitle">Escolha suas peças</h2></header>
+      <header class="section-head reveal"><p class="kicker">Pronta entrega</p><h2 id="catTitle">Escolha suas peças</h2><p class="lead-sm">Peças disponíveis na loja, para levar agora.</p></header>
       <div class="toolbar">
         <div class="search"><svg class="ico"><use href="#i-search"/></svg><label class="sr" for="q">Buscar peça</label><input id="q" type="search" placeholder="Buscar peça" autocomplete="off"></div>
         <div class="chips" id="genderChips" role="group" aria-label="Filtrar por público">
           <button type="button" class="chip on" data-gender="">Todos</button><button type="button" class="chip" data-gender="unissex">Unissex</button><button type="button" class="chip" data-gender="feminino">Feminino</button><button type="button" class="chip" data-gender="masculino">Masculino</button>
         </div>
       </div>
-      <div class="kind-tabs" id="kindTabs" role="group" aria-label="Tipo de entrega" hidden>
-        <button type="button" class="kind on" data-kind="">Todas as peças</button>
-        <button type="button" class="kind" data-kind="pronta"><strong>Pronta entrega</strong><small>Leva na hora</small></button>
-        <button type="button" class="kind" data-kind="encomenda"><strong>Sob encomenda</strong><small id="kindEncSub">Mais barato · pedido mínimo</small></button>
-      </div>
-      <p class="enc-note" id="encNote" hidden></p>
       <div class="chips cats" id="catChips" role="group" aria-label="Filtrar por categoria"></div>
       <div class="grid" id="grid" aria-live="polite"></div>
       <p class="empty" id="empty" hidden></p>
+    </div>
+  </section>
+  <section class="section section-enc" id="encomenda" aria-labelledby="encTitle" hidden>
+    <div class="wrap">
+      <header class="section-head reveal"><p class="kicker">Sob encomenda</p><h2 id="encTitle">Peças direto do fabricante</h2><p class="lead-sm" id="encLead"></p></header>
+      <div class="chips cats" id="encChips" role="group" aria-label="Linhas sob encomenda"></div>
+      <div id="encLines"></div>
     </div>
   </section>
   <section class="section section-soft" id="sobre" aria-labelledby="aboutTitle">
@@ -178,7 +179,7 @@
 <footer class="footer">
   <div class="wrap foot-in">
     <div class="foot-brand"><div id="footLogo"></div><p id="footTag">Moda unissex.</p></div>
-    <nav class="foot-nav" aria-label="Rodapé"><a href="#catalogo">Peças</a><a href="#como-funciona">Como comprar</a><a href="#sobre">Sobre</a><a href="#faq">Dúvidas</a><a href="#contato">Contato</a></nav>
+    <nav class="foot-nav" aria-label="Rodapé"><a href="#catalogo">Pronta entrega</a><a href="#encomenda" data-enc-link hidden>Sob encomenda</a><a href="#como-funciona">Como comprar</a><a href="#sobre">Sobre</a><a href="#faq">Dúvidas</a><a href="#contato">Contato</a></nav>
     <div class="foot-social" id="footSocial"></div>
   </div>
   <div class="wrap foot-legal">
@@ -198,7 +199,7 @@
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 <script src="js/vendor/anime-3.2.2.min.js"></script>
 <script src="js/vendor/supabase-2.117.2.js"></script>
-<script src="js/config.js?v=20261028b"></script>
-<script src="js/loja.js?v=20261028b"></script>
+<script src="js/config.js?v=20261028c"></script>
+<script src="js/loja.js?v=20261028c"></script>
 </body>
 </html>

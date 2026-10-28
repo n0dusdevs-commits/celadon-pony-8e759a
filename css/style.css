@@ -322,3 +322,11 @@ p{margin:0 0 1em}
 .pay-head{font-size:.8rem;text-transform:uppercase;letter-spacing:.1em;color:var(--ink-3);font-weight:800;margin:4px 0 2px}
 @media (max-width:760px){.kind-tabs{grid-template-columns:1fr 1fr}.kind-tabs .kind:first-child{grid-column:1/-1}}
 .price .ask{font-size:1rem;color:var(--gold-ink)}
+.lead-sm{color:var(--ink-3);margin-top:10px}
+.section-enc{background:linear-gradient(180deg,#f6efe0 0%,var(--bg) 100%);border-top:1px solid rgba(185,143,67,.25)}
+.section-enc .chip{display:inline-flex;align-items:center;text-decoration:none}
+.enc-line+.enc-line{margin-top:56px}
+.enc-line-head{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:8px 16px;margin-bottom:20px;padding-bottom:12px;border-bottom:1px solid rgba(185,143,67,.3)}
+.enc-line-head h3{font-family:var(--font-display);font-size:clamp(1.6rem,3vw,2.1rem);font-weight:700;line-height:1.1}
+.enc-min{font-size:.88rem;color:var(--gold-ink);background:rgba(217,181,106,.16);padding:6px 12px;border-radius:999px}
+.enc-line{scroll-margin-top:calc(var(--header-h) + 16px)}
