@@ -306,7 +306,7 @@
         $('#pl').innerHTML = l.length ? l.map(function (p) {
           return '<div class="prow' + (p.active ? '' : ' off') + '">' + (p.images[0] ? '<img class="thumb0" src="' + MM.img(p.images[0]) + '" alt="">' : '<div class="thumb0"></div>') +
             '<div><h3>' + esc(p.name) + (p.featured ? ' ★' : '') + '</h3><small>' + esc(p.category) + ' · ' + esc(p.gender) + (p.availability === 'encomenda' ? ' · <strong>sob encomenda</strong>' : '') + (p.stock != null ? ' · estoque ' + p.stock : '') + (p.consigned_qty != null ? ' · recebidas ' + p.consigned_qty : '') + (p.active ? '' : ' · oculto') + '</small></div>' +
-            '<span class="pr">' + brl(p.promo_cents || p.price_cents) + '</span><div class="acts"><button class="icon-btn" type="button" data-edit="' + p.id + '" aria-label="Editar">' + icon('edit') + '</button><button class="icon-btn" type="button" data-del="' + p.id + '" aria-label="Excluir">' + icon('trash') + '</button></div></div>';
+            '<span class="pr">' + (p.price_cents == null ? '<span class="muted">sob consulta</span>' : brl(p.promo_cents || p.price_cents)) + '</span><div class="acts"><button class="icon-btn" type="button" data-edit="' + p.id + '" aria-label="Editar">' + icon('edit') + '</button><button class="icon-btn" type="button" data-del="' + p.id + '" aria-label="Excluir">' + icon('trash') + '</button></div></div>';
         }).join('') : '<div class="empty">' + (PRODS.length ? 'Nada encontrado.' : 'Nenhum produto ainda. Toque em “Novo produto”.') + '</div>';
       }
       draw();
@@ -330,7 +330,7 @@
     var cats = []; PRODS.forEach(function (x) { if (cats.indexOf(x.category) < 0) cats.push(x.category); });
     $('#view').innerHTML = '<form class="panel fgrid" id="pForm" novalidate><h3 class="full first">' + (isNew ? 'Novo produto' : 'Editar produto') + '</h3>' +
       '<div class="field full"><label for="f_name">Nome *</label><input id="f_name" name="name" maxlength="120" value="' + esc(p.name || '') + '"></div>' +
-      '<div class="field"><label for="f_price">Preço (R$) *</label><input id="f_price" name="price" inputmode="decimal" placeholder="89,90" value="' + money(p.price_cents) + '"></div>' +
+      '<div class="field"><label for="f_price">Preço (R$)</label><input id="f_price" name="price" inputmode="decimal" placeholder="vazio = sob consulta" value="' + money(p.price_cents) + '"></div>' +
       '<div class="field"><label for="f_promo">Preço promocional (R$)</label><input id="f_promo" name="promo" inputmode="decimal" placeholder="opcional" value="' + money(p.promo_cents) + '"></div>' +
       '<div class="field"><label for="f_cat">Categoria *</label><input id="f_cat" name="category" list="catList" placeholder="Camisetas" value="' + esc(p.category || '') + '"><datalist id="catList">' + cats.map(function (c) { return '<option value="' + esc(c) + '">'; }).join('') + '</datalist></div>' +
       '<div class="field"><label for="f_gender">Público</label><select id="f_gender" name="gender">' + ['unissex', 'feminino', 'masculino'].map(function (g) { return '<option value="' + g + '"' + ((p.gender || 'unissex') === g ? ' selected' : '') + '>' + g.charAt(0).toUpperCase() + g.slice(1) + '</option>'; }).join('') + '</select></div>' +
@@ -373,7 +373,8 @@
       var name = f.name.value.trim(), price = cents(f.price.value), promo = cents(f.promo.value), cat = f.category.value.trim();
       var stockS = f.stock.value.trim(), consS = f.consigned.value.trim();
       if (name.length < 2) { err.textContent = 'Informe o nome do produto.'; return; }
-      if (!price || isNaN(price)) { err.textContent = 'Informe um preço válido (ex.: 89,90).'; return; }
+      if (isNaN(price)) { err.textContent = 'Informe um preço válido (ex.: 89,90) ou deixe vazio para “sob consulta”.'; return; }
+      if (promo !== null && price === null) { err.textContent = 'Para usar preço promocional, informe também o preço normal.'; return; }
       if (promo !== null && (isNaN(promo) || promo >= price)) { err.textContent = 'O preço promocional deve ser menor que o preço normal.'; return; }
       if (!cat) { err.textContent = 'Informe a categoria.'; return; }
       var kind = f.availability.value;

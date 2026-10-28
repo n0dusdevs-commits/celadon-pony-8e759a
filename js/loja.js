@@ -148,6 +148,8 @@
   /* ---------------- Catálogo ---------------- */
   var filter = { gender: '', cat: '', q: '', kind: '' };
   function priceOf(p) { return (p.promo_cents && p.promo_cents < p.price_cents) ? p.promo_cents : p.price_cents; }
+  function noPrice(p) { return p.price_cents == null; }
+  function askLink(p, size) { var wa = digits(S.whatsapp); return wa ? 'https://wa.me/' + wa + '?text=' + encodeURIComponent('Olá! Quero saber o valor desta peça: ' + p.name + (size ? ' (tam. ' + size + ')' : (p.sizes && p.sizes.length ? ' (tam. ' + p.sizes.join('/') + ')' : '')) + ' - ' + location.origin + location.pathname + '#p-' + p.id) : '#contato'; }
   function instLine() { return instOn() ? '<span class="inst">Parcelamento sem cartão com a lojista</span>' : ''; }
   function renderCats() {
     var cats = []; PRODUCTS.forEach(function (p) { if (cats.indexOf(p.category) < 0) cats.push(p.category); });
@@ -168,6 +170,12 @@
     var enc = isEnc(p), soldOut = !enc && p.stock === 0, promo = p.promo_cents && p.promo_cents < p.price_cents;
     var tag = soldOut ? '<span class="tag">Esgotado</span>' : promo ? '<span class="tag sale">-' + Math.round(100 - p.promo_cents / p.price_cents * 100) + '%</span>' : p.featured ? '<span class="tag">Destaque</span>' : '';
     if (enc) tag += '<span class="tag enc">Sob encomenda</span>';
+    if (noPrice(p)) {
+      return '<article class="prod" id="p-' + esc(p.id) + '"><button type="button" class="prod-media" data-open="' + esc(p.id) + '" aria-label="Ver ' + esc(p.name) + '">' + img + tag + '</button>' +
+        '<div class="prod-info">' + (enc ? '<span class="kind-line enc">Sob encomenda</span>' : '') + '<span class="prod-cat">' + esc(p.category) + '</span><h3 class="prod-name">' + esc(p.name) + (p.sizes && p.sizes.length ? ' · ' + esc(p.sizes.join('/')) : '') + '</h3>' +
+        '<div class="price"><strong class="ask">Preço sob consulta</strong></div>' +
+        '<a class="btn btn-dark btn-block prod-add" href="' + esc(askLink(p)) + '" target="_blank" rel="noopener">' + icon('whatsapp') + ' Consultar valor</a></div></article>';
+    }
     return '<article class="prod"><button type="button" class="prod-media" data-open="' + esc(p.id) + '" aria-label="Ver ' + esc(p.name) + '">' + img + tag + '</button>' +
       '<div class="prod-info">' + (enc ? '<span class="kind-line enc">Sob encomenda</span>' : '') + '<span class="prod-cat">' + esc(p.category) + '</span><h3 class="prod-name">' + esc(p.name) + '</h3>' +
       '<div class="price">' + (promo ? '<s>' + brl(p.price_cents) + '</s>' : '') + '<strong>' + brl(priceOf(p)) + '</strong></div>' +
@@ -212,6 +220,7 @@
   }
   function openProduct(id) {
     var p = findP(id); if (!p) return;
+    if (noPrice(p)) return openAsk(p);
     var imgs = p.images || [], promo = p.promo_cents && p.promo_cents < p.price_cents;
     var gallery = imgs.length ? '<img class="pm-main" id="pmMain" src="' + MM.img(imgs[0]) + '" alt="' + esc(p.name) + '">' +
       (imgs.length > 1 ? '<div class="pm-thumbs">' + imgs.map(function (u, i) { return '<button type="button" class="' + (i ? '' : 'on') + '" data-src="' + MM.img(u) + '" aria-label="Foto ' + (i + 1) + '"><img src="' + MM.img(u) + '" alt=""></button>'; }).join('') + '</div>' : '') : phHTML();
@@ -241,13 +250,25 @@
     pmDialog.showModal();
     if (A) A({ targets: pmDialog, opacity: [0, 1], scale: [0.96, 1], duration: 380, easing: 'easeOutCubic' });
   }
+  function openAsk(p) {
+    var imgs = p.images || [];
+    $('#pmBody').innerHTML = '<button class="icon-btn modal-x" type="button" data-close aria-label="Fechar">' + icon('x') + '</button>' +
+      '<div class="pm"><div class="pm-gallery">' + (imgs.length ? '<img class="pm-main" src="' + MM.img(imgs[0]) + '" alt="' + esc(p.name) + '">' : phHTML()) + '</div><div class="pm-info">' +
+      '<span class="prod-cat">' + esc(p.category) + '</span><h2 id="pmName">' + esc(p.name) + '</h2>' +
+      (p.sizes && p.sizes.length ? '<p class="pm-desc"><strong>Tamanho:</strong> ' + esc(p.sizes.join(', ')) + '</p>' : '') +
+      (p.description ? '<p class="pm-desc">' + esc(p.description) + '</p>' : '') +
+      '<div class="price"><strong class="ask">Preço sob consulta</strong></div>' +
+      '<p class="note-box">Fale com a lojista pelo WhatsApp para saber o valor e reservar esta peça.</p>' +
+      '<a class="btn btn-gold btn-block" href="' + esc(askLink(p)) + '" target="_blank" rel="noopener">' + icon('whatsapp') + ' Consultar valor no WhatsApp</a></div></div>';
+    pmDialog.showModal();
+  }
   $$('dialog').forEach(function (d) { d.addEventListener('click', function (e) { if (e.target === d || e.target.closest('[data-close]')) d.close(); }); });
 
   /* ---------------- Sacola ---------------- */
   var bag = (store('mm_bag') || []).filter(function (i) { return i && i.id; });
   function saveBag() { store('mm_bag', bag); }
   function key(i) { return i.id + '|' + i.size + '|' + i.color; }
-  function bagItems() { return bag.map(function (i) { return { ref: i, p: findP(i.id) }; }).filter(function (x) { return x.p && (isEnc(x.p) || x.p.stock !== 0); }); }
+  function bagItems() { return bag.map(function (i) { return { ref: i, p: findP(i.id) }; }).filter(function (x) { return x.p && !noPrice(x.p) && (isEnc(x.p) || x.p.stock !== 0); }); }
   function bagTotal() { return bagItems().reduce(function (s, x) { return s + priceOf(x.p) * x.ref.qty; }, 0); }
   function bagCount() { return bagItems().reduce(function (s, x) { return s + x.ref.qty; }, 0); }
   function addToBag(p, size, color, qty) {

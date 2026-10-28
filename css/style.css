@@ -321,3 +321,4 @@ p{margin:0 0 1em}
 .min-bar.ok .min-track span{background:#1f8a5b}
 .pay-head{font-size:.8rem;text-transform:uppercase;letter-spacing:.1em;color:var(--ink-3);font-weight:800;margin:4px 0 2px}
 @media (max-width:760px){.kind-tabs{grid-template-columns:1fr 1fr}.kind-tabs .kind:first-child{grid-column:1/-1}}
+.price .ask{font-size:1rem;color:var(--gold-ink)}

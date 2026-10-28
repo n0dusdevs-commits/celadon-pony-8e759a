@@ -10,7 +10,7 @@ window.MM = (function () {
   var sb = window.supabase.createClient(c.SUPABASE_URL, c.SUPABASE_KEY);
   function img(path) {
     if (!path) return '';
-    if (/^(https?:|assets\/)/.test(path)) return path;
+    if (/^(https?:|assets\/|fotos\/)/.test(path)) return path;
     return c.SUPABASE_URL + '/storage/v1/object/public/' + c.BUCKET + '/' + path.split('/').map(encodeURIComponent).join('/');
   }
   var DEFAULTS = {
