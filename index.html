@@ -128,6 +128,12 @@
           <button type="button" class="chip on" data-gender="">Todos</button><button type="button" class="chip" data-gender="unissex">Unissex</button><button type="button" class="chip" data-gender="feminino">Feminino</button><button type="button" class="chip" data-gender="masculino">Masculino</button>
         </div>
       </div>
+      <div class="kind-tabs" id="kindTabs" role="group" aria-label="Tipo de entrega" hidden>
+        <button type="button" class="kind on" data-kind="">Todas as peças</button>
+        <button type="button" class="kind" data-kind="pronta"><strong>Pronta entrega</strong><small>Leva na hora</small></button>
+        <button type="button" class="kind" data-kind="encomenda"><strong>Sob encomenda</strong><small id="kindEncSub">Mais barato · pedido mínimo</small></button>
+      </div>
+      <p class="enc-note" id="encNote" hidden></p>
       <div class="chips cats" id="catChips" role="group" aria-label="Filtrar por categoria"></div>
       <div class="grid" id="grid" aria-live="polite"></div>
       <p class="empty" id="empty" hidden></p>
@@ -148,6 +154,7 @@
       <header class="section-head reveal"><p class="kicker">Dúvidas</p><h2 id="faqTitle">Perguntas frequentes</h2></header>
       <div class="faq">
         <div class="faq-item reveal"><h3><button type="button" class="faq-q" aria-expanded="false" aria-controls="fa1" id="fq1">Como faço um pedido? <svg class="ico"><use href="#i-chevron"/></svg></button></h3><div class="faq-a" id="fa1" role="region" aria-labelledby="fq1" hidden><p>Adicione as peças na sacola, toque em “Finalizar pedido”, preencha seus dados e escolha a forma de pagamento. O pedido abre pronto no WhatsApp da lojista.</p></div></div>
+        <div class="faq-item reveal" id="faqEncItem" hidden><h3><button type="button" class="faq-q" aria-expanded="false" aria-controls="fa6" id="fq6">O que é “sob encomenda”? <svg class="ico"><use href="#i-chevron"/></svg></button></h3><div class="faq-a" id="fa6" role="region" aria-labelledby="fq6" hidden><p id="faqEnc"></p></div></div>
         <div class="faq-item reveal" id="faqInstItem"><h3><button type="button" class="faq-q" aria-expanded="false" aria-controls="fa2" id="fq2">Como funciona o parcelamento? <svg class="ico"><use href="#i-chevron"/></svg></button></h3><div class="faq-a" id="fa2" role="region" aria-labelledby="fq2" hidden><p id="faqInst">O parcelamento é feito sem cartão, direto com a lojista. A quantidade de parcelas e as datas de pagamento dependem da época da compra, por isso quem informa em quantas vezes você pode pagar é a lojista, pelo WhatsApp, depois que você envia o pedido.</p></div></div>
         <div class="faq-item reveal"><h3><button type="button" class="faq-q" aria-expanded="false" aria-controls="fa3" id="fq3">Quais são as formas de pagamento? <svg class="ico"><use href="#i-chevron"/></svg></button></h3><div class="faq-a" id="fa3" role="region" aria-labelledby="fq3" hidden><p id="faqPay">PIX, dinheiro ou parcelado sem cartão. Você escolhe na hora de finalizar e a lojista confirma os detalhes com você.</p></div></div>
         <div class="faq-item reveal"><h3><button type="button" class="faq-q" aria-expanded="false" aria-controls="fa4" id="fq4">Entrega ou retirada? <svg class="ico"><use href="#i-chevron"/></svg></button></h3><div class="faq-a" id="fa4" role="region" aria-labelledby="fq4" hidden><p>No pedido você escolhe entre retirada e entrega. Valores e prazos de entrega são combinados com a lojista no WhatsApp.</p></div></div>

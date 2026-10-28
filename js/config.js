@@ -22,7 +22,11 @@ window.MM = (function () {
     hero_subtitle: 'Peças unissex para todos os momentos. Escolha o que ama, monte sua sacola e finalize direto no WhatsApp com a gente.',
     about_title: 'A May Modas',
     about_text: 'A May Modas nasce com uma ideia simples: roupa boa não precisa ter gênero. Selecionamos peças confortáveis, atuais e com personalidade para quem quer se vestir sem regras.',
-    announcement: ''
+    announcement: '',
+    encomenda_enabled: true,
+    encomenda_min_cents: 45000,
+    encomenda_prazo: '',
+    encomenda_note: 'Peças sob encomenda são buscadas direto no fornecedor depois do seu pedido, por isso saem mais em conta. O prazo de chegada é combinado com a lojista.'
   };
   function brl(c) { return (c / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }); }
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (ch) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]; }); }

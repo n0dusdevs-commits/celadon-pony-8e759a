@@ -12,6 +12,13 @@
   function logoSrc() { return S.logo ? MM.img(S.logo) : 'assets/logo.webp'; }
   function store(k, v) { try { if (v === undefined) return JSON.parse(localStorage.getItem(k) || 'null'); localStorage.setItem(k, JSON.stringify(v)); } catch (e) { return null; } }
   function instOn() { return S.installments_enabled !== false; }
+  function encOn() { return S.encomenda_enabled !== false; }
+  function isEnc(p) { return (p.availability || 'pronta') === 'encomenda'; }
+  function minEnc() { return Number(S.encomenda_min_cents) || 0; }
+  function encNoteText() {
+    return (S.encomenda_note || '') + (S.encomenda_prazo ? ' Prazo estimado: ' + S.encomenda_prazo + '.' : '') +
+      (minEnc() ? ' Pedido mínimo de ' + brl(minEnc()) + ' em peças sob encomenda (pode somar várias peças).' : '');
+  }
   var toastT;
   function toast(msg) { var t = $('#toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toastT); toastT = setTimeout(function () { t.classList.remove('show'); }, 2600); }
   function phHTML() { return '<div class="ph"><img src="' + logoSrc() + '" alt=""></div>'; }
@@ -52,6 +59,11 @@
     if (S.instagram) social.push('<a href="https://instagram.com/' + encodeURIComponent(S.instagram) + '" target="_blank" rel="noopener" aria-label="Instagram">' + icon('instagram') + '</a>');
     $('#footSocial').innerHTML = social.join('');
     $('#year').textContent = new Date().getFullYear();
+    var hasEnc = encOn() && PRODUCTS.some(isEnc), hasPronta = PRODUCTS.some(function (p) { return !isEnc(p); });
+    $('#kindTabs').hidden = !(hasEnc && hasPronta);
+    $('#kindEncSub').textContent = minEnc() ? 'Mais barato · mín. ' + brl(minEnc()) : 'Mais barato';
+    $('#faqEncItem').hidden = !hasEnc;
+    $('#faqEnc').textContent = 'São peças que a lojista busca direto no fornecedor depois do seu pedido, por isso o preço é menor. ' + encNoteText() + ' Pagamento em PIX, dinheiro ou cartão parcelado.';
     var cats = {}; PRODUCTS.forEach(function (p) { cats[p.category] = 1; });
     $('#cntProducts').setAttribute('data-count', PRODUCTS.length);
     $('#cntCats').setAttribute('data-count', Object.keys(cats).length);
@@ -134,7 +146,7 @@
   });
 
   /* ---------------- Catálogo ---------------- */
-  var filter = { gender: '', cat: '', q: '' };
+  var filter = { gender: '', cat: '', q: '', kind: '' };
   function priceOf(p) { return (p.promo_cents && p.promo_cents < p.price_cents) ? p.promo_cents : p.price_cents; }
   function instLine() { return instOn() ? '<span class="inst">Parcelamento sem cartão com a lojista</span>' : ''; }
   function renderCats() {
@@ -147,16 +159,19 @@
     return PRODUCTS.filter(function (p) {
       return (!filter.gender || p.gender === filter.gender || (filter.gender !== 'unissex' && p.gender === 'unissex')) &&
         (!filter.cat || p.category === filter.cat) &&
+        (!filter.kind || (p.availability || 'pronta') === filter.kind) &&
         (!qq || (p.name + ' ' + p.category + ' ' + (p.description || '')).toLowerCase().indexOf(qq) >= 0);
     });
   }
   function cardHTML(p) {
     var img = p.images && p.images[0] ? '<img src="' + MM.img(p.images[0]) + '" alt="' + esc(p.name) + '" loading="lazy">' : phHTML();
-    var soldOut = p.stock === 0, promo = p.promo_cents && p.promo_cents < p.price_cents;
+    var enc = isEnc(p), soldOut = !enc && p.stock === 0, promo = p.promo_cents && p.promo_cents < p.price_cents;
     var tag = soldOut ? '<span class="tag">Esgotado</span>' : promo ? '<span class="tag sale">-' + Math.round(100 - p.promo_cents / p.price_cents * 100) + '%</span>' : p.featured ? '<span class="tag">Destaque</span>' : '';
+    if (enc) tag += '<span class="tag enc">Sob encomenda</span>';
     return '<article class="prod"><button type="button" class="prod-media" data-open="' + esc(p.id) + '" aria-label="Ver ' + esc(p.name) + '">' + img + tag + '</button>' +
-      '<div class="prod-info"><span class="prod-cat">' + esc(p.category) + '</span><h3 class="prod-name">' + esc(p.name) + '</h3>' +
-      '<div class="price">' + (promo ? '<s>' + brl(p.price_cents) + '</s>' : '') + '<strong>' + brl(priceOf(p)) + '</strong></div>' + instLine() +
+      '<div class="prod-info">' + (enc ? '<span class="kind-line enc">Sob encomenda</span>' : '') + '<span class="prod-cat">' + esc(p.category) + '</span><h3 class="prod-name">' + esc(p.name) + '</h3>' +
+      '<div class="price">' + (promo ? '<s>' + brl(p.price_cents) + '</s>' : '') + '<strong>' + brl(priceOf(p)) + '</strong></div>' +
+      (enc ? '<span class="inst">' + (minEnc() ? 'Mín. ' + brl(minEnc()) + ' em encomendas' : 'Cartão parcelado') + '</span>' : instLine()) +
       '<button type="button" class="btn btn-dark btn-block prod-add" data-open="' + esc(p.id) + '"' + (soldOut ? ' disabled' : '') + '>' + (soldOut ? 'Esgotado' : 'Escolher') + '</button></div></article>';
   }
   function renderGrid(animate, msg) {
@@ -176,6 +191,13 @@
   function setChip(wrap, btn) { $$('.chip', wrap).forEach(function (c) { c.classList.toggle('on', c === btn); }); }
   $('#genderChips').addEventListener('click', function (e) { var b = e.target.closest('.chip'); if (!b) return; setChip($('#genderChips'), b); filter.gender = b.getAttribute('data-gender'); renderGrid(true); });
   $('#catChips').addEventListener('click', function (e) { var b = e.target.closest('.chip'); if (!b) return; setChip($('#catChips'), b); filter.cat = b.getAttribute('data-cat'); renderGrid(true); });
+  $('#kindTabs').addEventListener('click', function (e) {
+    var b = e.target.closest('.kind'); if (!b) return;
+    $$('.kind', $('#kindTabs')).forEach(function (c) { c.classList.toggle('on', c === b); });
+    filter.kind = b.getAttribute('data-kind');
+    var n = $('#encNote'); n.hidden = filter.kind !== 'encomenda'; n.textContent = encNoteText();
+    renderGrid(true);
+  });
   var qT; $('#q').addEventListener('input', function (e) { clearTimeout(qT); qT = setTimeout(function () { filter.q = e.target.value; renderGrid(true); }, 200); });
   $('#grid').addEventListener('click', function (e) { var b = e.target.closest('[data-open]'); if (b && !b.disabled) openProduct(b.getAttribute('data-open')); });
 
@@ -196,7 +218,8 @@
     $('#pmBody').innerHTML = '<button class="icon-btn modal-x" type="button" data-close aria-label="Fechar">' + icon('x') + '</button>' +
       '<div class="pm"><div class="pm-gallery">' + gallery + '</div><form class="pm-info" id="pmForm" novalidate>' +
       '<span class="prod-cat">' + esc(p.category) + ' · ' + esc(p.gender) + '</span><h2 id="pmName">' + esc(p.name) + '</h2>' +
-      '<div class="price">' + (promo ? '<s>' + brl(p.price_cents) + '</s>' : '') + '<strong>' + brl(priceOf(p)) + '</strong></div>' + instLine() +
+      '<div class="price">' + (promo ? '<s>' + brl(p.price_cents) + '</s>' : '') + '<strong>' + brl(priceOf(p)) + '</strong></div>' +
+      (isEnc(p) ? '<p class="note-box"><strong>Sob encomenda.</strong> ' + esc(encNoteText()) + ' Pagamento em PIX, dinheiro ou cartão parcelado.</p>' : instLine()) +
       (p.description ? '<p class="pm-desc">' + esc(p.description) + '</p>' : '') +
       optGroup('size', 'Tamanho', p.sizes) + optGroup('color', 'Cor', p.colors) +
       '<div><span class="sr" id="qtyLbl">Quantidade</span><div class="qty" role="group" aria-labelledby="qtyLbl"><button type="button" data-q="-1" aria-label="Diminuir">' + icon('minus') + '</button><output id="pmQty">1</output><button type="button" data-q="1" aria-label="Aumentar">' + icon('plus') + '</button></div></div>' +
@@ -224,7 +247,7 @@
   var bag = (store('mm_bag') || []).filter(function (i) { return i && i.id; });
   function saveBag() { store('mm_bag', bag); }
   function key(i) { return i.id + '|' + i.size + '|' + i.color; }
-  function bagItems() { return bag.map(function (i) { return { ref: i, p: findP(i.id) }; }).filter(function (x) { return x.p && x.p.stock !== 0; }); }
+  function bagItems() { return bag.map(function (i) { return { ref: i, p: findP(i.id) }; }).filter(function (x) { return x.p && (isEnc(x.p) || x.p.stock !== 0); }); }
   function bagTotal() { return bagItems().reduce(function (s, x) { return s + priceOf(x.p) * x.ref.qty; }, 0); }
   function bagCount() { return bagItems().reduce(function (s, x) { return s + x.ref.qty; }, 0); }
   function addToBag(p, size, color, qty) {
@@ -257,39 +280,67 @@
   scrim.addEventListener('click', closeDrawer);
   document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && drawer.classList.contains('open')) closeDrawer(); });
   function animIn() { if (A) A({ targets: '#drawerBody > *', opacity: [0, 1], translateY: [12, 0], delay: A.stagger(40), duration: 400, easing: 'easeOutCubic' }); }
+  function splitBag() {
+    var items = bagItems(), pr = items.filter(function (x) { return !isEnc(x.p); }), en = items.filter(function (x) { return isEnc(x.p); });
+    var sum = function (a) { return a.reduce(function (s, x) { return s + priceOf(x.p) * x.ref.qty; }, 0); };
+    return { items: items, pronta: pr, enc: en, prontaCents: sum(pr), encCents: sum(en) };
+  }
+  function lineHTML(x) {
+    var p = x.p, i = x.ref, idx = bag.indexOf(i);
+    var img = p.images && p.images[0] ? '<img class="line-img" src="' + MM.img(p.images[0]) + '" alt="">' : '<div class="line-img">' + phHTML() + '</div>';
+    var opts = [i.size && ('Tam. ' + i.size), i.color].filter(Boolean).map(esc).join(' · ');
+    return '<div class="line" data-idx="' + idx + '">' + img + '<div><h3>' + esc(p.name) + '</h3>' + (opts ? '<small>' + opts + '</small>' : '') + '<small>' + brl(priceOf(p)) + '</small></div>' +
+      '<div class="line-right"><div class="qty" role="group" aria-label="Quantidade"><button type="button" data-step="-1" aria-label="Diminuir">' + icon('minus') + '</button><output>' + i.qty + '</output><button type="button" data-step="1" aria-label="Aumentar">' + icon('plus') + '</button></div><button type="button" class="linklike" data-remove>Remover</button></div></div>';
+  }
+  function minBarHTML(encCents) {
+    var min = minEnc(); if (!min) return '';
+    var okk = encCents >= min, pct = Math.min(100, Math.round(encCents / min * 100));
+    return '<div class="min-bar' + (okk ? ' ok' : '') + '"><span>' + (okk ? '✓ Pedido mínimo de encomenda atingido' : 'Faltam <strong>' + brl(min - encCents) + '</strong> em peças sob encomenda para atingir o mínimo de ' + brl(min) + '.') + '</span><div class="min-track"><span style="width:' + pct + '%"></span></div></div>';
+  }
   function renderBag() {
-    var body = $('#drawerBody'), items = bagItems();
+    var body = $('#drawerBody'), b = splitBag();
     $('#drawerTitle').textContent = 'Sua sacola';
-    if (!items.length) {
+    if (!b.items.length) {
       body.innerHTML = '<div class="drawer-empty">' + icon('bag') + '<p>Sua sacola está vazia.</p><a class="btn btn-dark" href="#catalogo" id="goShop">Ver as peças</a></div>';
       $('#goShop').addEventListener('click', closeDrawer); return;
     }
-    var t = bagTotal();
-    body.innerHTML = items.map(function (x, idx) {
-      var p = x.p, i = x.ref;
-      var img = p.images && p.images[0] ? '<img class="line-img" src="' + MM.img(p.images[0]) + '" alt="">' : '<div class="line-img">' + phHTML() + '</div>';
-      var opts = [i.size && ('Tam. ' + i.size), i.color].filter(Boolean).map(esc).join(' · ');
-      return '<div class="line" data-idx="' + idx + '">' + img + '<div><h3>' + esc(p.name) + '</h3>' + (opts ? '<small>' + opts + '</small>' : '') + '<small>' + brl(priceOf(p)) + '</small></div>' +
-        '<div class="line-right"><div class="qty" role="group" aria-label="Quantidade"><button type="button" data-step="-1" aria-label="Diminuir">' + icon('minus') + '</button><output>' + i.qty + '</output><button type="button" data-step="1" aria-label="Aumentar">' + icon('plus') + '</button></div><button type="button" class="linklike" data-remove>Remover</button></div></div>';
-    }).join('') +
-      '<div class="summary"><div class="row total"><span>Total</span><span>' + brl(t) + '</span></div>' +
-      (instOn() ? '<div class="row"><small class="inst">Pode parcelar sem cartão. A lojista informa em quantas vezes.</small></div>' : '') +
-      '<button type="button" class="btn btn-gold btn-block" id="toCheckout">Finalizar pedido ' + icon('arrow') + '</button></div>';
+    var both = b.pronta.length && b.enc.length, encShort = b.enc.length && b.encCents < minEnc();
+    var html = '';
+    if (b.pronta.length) html += '<div class="bag-group">' + (both ? '<h3 class="gh"><span>Pronta entrega</span><span>' + brl(b.prontaCents) + '</span></h3>' : '') + b.pronta.map(lineHTML).join('') + '</div>';
+    if (b.enc.length) html += '<div class="bag-group"><h3 class="gh"><span>Sob encomenda</span><span>' + brl(b.encCents) + '</span></h3>' + b.enc.map(lineHTML).join('') + minBarHTML(b.encCents) + '</div>';
+    var t = b.prontaCents + b.encCents;
+    html += '<div class="summary"><div class="row total"><span>Total</span><span>' + brl(t) + '</span></div>' +
+      (b.pronta.length && instOn() ? '<div class="row"><small class="inst">Pronta entrega: pode parcelar sem cartão com a lojista.</small></div>' : '') +
+      (b.enc.length ? '<div class="row"><small class="inst">Sob encomenda: PIX, dinheiro ou cartão parcelado.</small></div>' : '') +
+      '<button type="button" class="btn btn-gold btn-block" id="toCheckout"' + (encShort ? ' disabled' : '') + '>Finalizar pedido ' + icon('arrow') + '</button>' +
+      (encShort ? '<small class="err c">Complete o mínimo das peças sob encomenda ou remova-as para finalizar.</small>' : '') + '</div>';
+    body.innerHTML = html;
     $$('.line', body).forEach(function (row) {
-      var x = items[Number(row.getAttribute('data-idx'))];
+      var ref = bag[Number(row.getAttribute('data-idx'))], p = findP(ref.id);
       row.addEventListener('click', function (e) {
         var st = e.target.closest('[data-step]');
-        if (st) { var max = x.p.stock == null ? 20 : Math.min(20, x.p.stock); x.ref.qty = Math.min(max, Math.max(1, x.ref.qty + Number(st.getAttribute('data-step')))); saveBag(); updateBadge(); renderBag(); }
-        if (e.target.closest('[data-remove]')) { bag = bag.filter(function (b) { return b !== x.ref; }); saveBag(); updateBadge(); renderBag(); }
+        if (st) { var max = (isEnc(p) || p.stock == null) ? 20 : Math.min(20, p.stock); ref.qty = Math.min(max, Math.max(1, ref.qty + Number(st.getAttribute('data-step')))); saveBag(); updateBadge(); renderBag(); }
+        if (e.target.closest('[data-remove]')) { bag = bag.filter(function (x) { return x !== ref; }); saveBag(); updateBadge(); renderBag(); }
       });
     });
     $('#toCheckout').addEventListener('click', renderCheckout);
     animIn();
   }
+  function payOpt(name, value, title, sub) { return '<label class="pay"><input type="radio" name="' + name + '" value="' + value + '"><span><strong>' + title + '</strong><small>' + sub + '</small></span></label>'; }
   function renderCheckout() {
-    var body = $('#drawerBody'), t = bagTotal(), wa = digits(S.whatsapp);
+    var body = $('#drawerBody'), b = splitBag(), t = b.prontaCents + b.encCents, wa = digits(S.whatsapp);
+    if (b.enc.length && b.encCents < minEnc()) return renderBag();
+    var both = b.pronta.length && b.enc.length;
     var saved = store('mm_customer') || {};
     $('#drawerTitle').textContent = 'Finalizar pedido';
+    var payPronta = b.pronta.length ? '<fieldset class="field opt-group"><legend>' + (both ? 'Pagamento das peças de pronta entrega (' + brl(b.prontaCents) + ')' : 'Forma de pagamento') + '</legend><div class="pay-opts">' +
+      payOpt('payment', 'pix', 'PIX', 'À vista, a lojista envia a chave') + payOpt('payment', 'dinheiro', 'Dinheiro', 'Na retirada ou na entrega') +
+      (instOn() ? payOpt('payment', 'parcelado', 'Parcelado sem cartão, direto com a lojista', 'A lojista informa em quantas vezes você pode pagar') : '') +
+      '</div><div id="instBox" hidden><p class="note-box" style="margin-top:10px"><strong>Importante:</strong> ' + esc(S.installments_note || MM.DEFAULTS.installments_note) + ' Envie o pedido e ela te responde com as opções no WhatsApp.</p></div><small class="err" id="payErr" role="alert"></small></fieldset>' : '';
+    var payEnc = b.enc.length ? '<fieldset class="field opt-group"><legend>' + (both ? 'Pagamento das peças sob encomenda (' + brl(b.encCents) + ')' : 'Forma de pagamento') + '</legend><div class="pay-opts">' +
+      payOpt('payment_enc', 'pix', 'PIX', 'A lojista envia a chave') + payOpt('payment_enc', 'dinheiro', 'Dinheiro', 'Combinado com a lojista') +
+      payOpt('payment_enc', 'cartao', 'Cartão parcelado', 'Parcelas no cartão combinadas com a lojista') +
+      '</div><small class="err" id="payEncErr" role="alert"></small></fieldset>' : '';
     body.innerHTML = '<button type="button" class="checkout-back" id="backBag">← Voltar para a sacola</button>' +
       (!wa ? '<p class="note-box">A loja ainda está configurando o recebimento de pedidos. Tente novamente em breve.</p>' : '') +
       '<form id="checkout" class="form flat" novalidate>' +
@@ -297,19 +348,18 @@
       '<div class="field"><label for="coPhone">Seu WhatsApp (com DDD)</label><input id="coPhone" name="phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="(11) 99999-9999" value="' + esc(saved.phone || '') + '"><small class="err" role="alert"></small></div>' +
       '<fieldset class="field opt-group"><legend>Como quer receber?</legend><div class="seg"><label class="pay"><input type="radio" name="delivery" value="retirada" checked><span><strong>Retirada</strong><small>a combinar</small></span></label><label class="pay"><input type="radio" name="delivery" value="entrega"><span><strong>Entrega</strong><small>a combinar</small></span></label></div></fieldset>' +
       '<div class="field" id="addrField" hidden><label for="coAddr">Endereço para entrega</label><textarea id="coAddr" name="address" rows="2" maxlength="250" autocomplete="street-address">' + esc(saved.address || '') + '</textarea><small class="err" role="alert"></small></div>' +
-      '<fieldset class="field opt-group"><legend>Forma de pagamento</legend><div class="pay-opts">' +
-      '<label class="pay"><input type="radio" name="payment" value="pix"><span><strong>PIX</strong><small>À vista, a lojista envia a chave</small></span></label>' +
-      '<label class="pay"><input type="radio" name="payment" value="dinheiro"><span><strong>Dinheiro</strong><small>Na retirada ou na entrega</small></span></label>' +
-      (instOn() ? '<label class="pay"><input type="radio" name="payment" value="parcelado"><span><strong>Parcelado sem cartão, direto com a lojista</strong><small>A lojista informa em quantas vezes você pode pagar</small></span></label>' : '') +
-      '</div><div id="instBox" hidden><p class="note-box" style="margin-top:10px"><strong>Importante:</strong> ' + esc(S.installments_note || MM.DEFAULTS.installments_note) + ' Envie o pedido e ela te responde com as opções no WhatsApp.</p></div><small class="err" id="payErr" role="alert"></small></fieldset>' +
+      payPronta + payEnc +
+      (b.enc.length ? '<p class="note-box"><strong>Sob encomenda:</strong> ' + esc(encNoteText()) + '</p>' : '') +
       '<div class="field"><label for="coNotes">Observações (opcional)</label><textarea id="coNotes" name="notes" rows="2" maxlength="400" placeholder="Ex.: prefiro retirar no sábado"></textarea></div>' +
-      '<div class="summary"><div class="row"><span>' + bagCount() + (bagCount() === 1 ? ' peça' : ' peças') + '</span><span>' + brl(t) + '</span></div><div class="row total"><span>Total</span><span>' + brl(t) + '</span></div></div>' +
+      '<div class="summary">' + (both ? '<div class="row"><span>Pronta entrega</span><span>' + brl(b.prontaCents) + '</span></div><div class="row"><span>Sob encomenda</span><span>' + brl(b.encCents) + '</span></div>' : '<div class="row"><span>' + bagCount() + (bagCount() === 1 ? ' peça' : ' peças') + '</span><span>' + brl(t) + '</span></div>') +
+      '<div class="row total"><span>Total</span><span>' + brl(t) + '</span></div></div>' +
       '<button type="submit" class="btn btn-gold btn-block" id="coSubmit"' + (!wa ? ' disabled' : '') + '>' + icon('whatsapp') + ' Enviar pedido no WhatsApp</button><p class="err c" id="coErr" role="alert"></p></form>';
     var form = $('#checkout');
     $('#backBag').addEventListener('click', renderBag);
     form.addEventListener('change', function (e) {
       if (e.target.name === 'delivery') $('#addrField').hidden = e.target.value !== 'entrega';
       if (e.target.name === 'payment') { var show = e.target.value === 'parcelado'; $('#instBox').hidden = !show; $('#payErr').textContent = ''; if (show && A) A({ targets: '#instBox', opacity: [0, 1], translateY: [-6, 0], duration: 300, easing: 'easeOutCubic' }); }
+      if (e.target.name === 'payment_enc') $('#payEncErr').textContent = '';
     });
     $('#coPhone').addEventListener('input', function (e) { var d = e.target.value.replace(/\D/g, '').slice(0, 11); e.target.value = d.length > 6 ? '(' + d.slice(0, 2) + ') ' + d.slice(2, d.length - 4) + '-' + d.slice(-4) : d.length > 2 ? '(' + d.slice(0, 2) + ') ' + d.slice(2) : d; });
     var check = liveValidate(form, {
@@ -320,26 +370,30 @@
     form.addEventListener('submit', function (e) {
       e.preventDefault();
       if (!check()) return;
-      var pay = form.querySelector('input[name=payment]:checked');
-      if (!pay) { $('#payErr').textContent = 'Escolha a forma de pagamento.'; return; }
+      var pay = form.querySelector('input[name=payment]:checked'), payE = form.querySelector('input[name=payment_enc]:checked');
+      var missing = false;
+      if (b.pronta.length && !pay) { $('#payErr').textContent = 'Escolha a forma de pagamento.'; missing = true; }
+      if (b.enc.length && !payE) { $('#payEncErr').textContent = 'Escolha a forma de pagamento.'; missing = true; }
+      if (missing) return;
       var delivery = form.querySelector('input[name=delivery]:checked').value;
       var c = { name: form.name.value.trim(), phone: form.phone.value.trim(), address: form.address.value.trim() };
       store('mm_customer', c);
       var notes = form.notes.value.trim();
       var btn = $('#coSubmit'); btn.disabled = true; btn.textContent = 'Registrando pedido...'; $('#coErr').textContent = '';
-      // abre a aba já no clique para o navegador não bloquear
       var win = null; try { win = window.open('', '_blank'); } catch (er) { win = null; }
       sb.rpc('place_order', {
         p_name: c.name, p_phone: c.phone, p_delivery: delivery, p_address: delivery === 'entrega' ? c.address : '',
-        p_payment: pay.value, p_notes: notes,
-        p_items: bagItems().map(function (x) { return { id: x.ref.id, qty: x.ref.qty, size: x.ref.size, color: x.ref.color }; })
+        p_payment: pay ? pay.value : null, p_payment_encomenda: payE ? payE.value : null, p_notes: notes,
+        p_items: b.items.map(function (x) { return { id: x.ref.id, qty: x.ref.qty, size: x.ref.size, color: x.ref.color }; })
       }).then(function (r) {
         if (r.error) throw new Error(r.error.message);
         var o = r.data;
-        var payLabel = pay.value === 'pix' ? 'PIX' : pay.value === 'dinheiro' ? 'Dinheiro' : 'Parcelado sem cartão (aguardando a lojista informar a quantidade de parcelas)';
-        var msg = ['*Novo pedido ' + o.code + ' - ' + S.store_name + '*', '', '*Cliente:* ' + c.name, '*WhatsApp:* ' + c.phone, '', '*Itens:*']
-          .concat(o.items.map(function (l) { var op = [l.size && ('Tam. ' + l.size), l.color].filter(Boolean).join(', '); return '- ' + l.qty + 'x ' + l.name + (op ? ' (' + op + ')' : '') + ' - ' + brl(l.unit_cents * l.qty); }))
-          .concat(['', '*Total:* ' + brl(o.total_cents), '*Pagamento:* ' + payLabel, '*Recebimento:* ' + (delivery === 'entrega' ? 'Entrega - ' + c.address : 'Retirada (combinar com a lojista)')]);
+        var PL = { pix: 'PIX', dinheiro: 'Dinheiro', parcelado: 'Parcelado sem cartão (aguardando a lojista informar a quantidade de parcelas)', cartao: 'Cartão parcelado (combinar parcelas com a lojista)' };
+        function lines(kind) { return o.items.filter(function (l) { return (l.kind || 'pronta') === kind; }).map(function (l) { var op = [l.size && ('Tam. ' + l.size), l.color].filter(Boolean).join(', '); return '- ' + l.qty + 'x ' + l.name + (op ? ' (' + op + ')' : '') + ' - ' + brl(l.unit_cents * l.qty); }); }
+        var msg = ['*Novo pedido ' + o.code + ' - ' + S.store_name + '*', '', '*Cliente:* ' + c.name, '*WhatsApp:* ' + c.phone];
+        if (o.pronta_cents) msg = msg.concat(['', '*PRONTA ENTREGA*'], lines('pronta'), ['Subtotal: ' + brl(o.pronta_cents), 'Pagamento: ' + PL[pay.value]]);
+        if (o.encomenda_cents) msg = msg.concat(['', '*SOB ENCOMENDA (buscar no fornecedor)*'], lines('encomenda'), ['Subtotal: ' + brl(o.encomenda_cents), 'Pagamento: ' + PL[payE.value]]);
+        msg = msg.concat(['', '*Total:* ' + brl(o.total_cents), '*Recebimento:* ' + (delivery === 'entrega' ? 'Entrega - ' + c.address : 'Retirada (combinar com a lojista)')]);
         if (notes) msg.push('*Obs.:* ' + notes);
         var url = 'https://wa.me/' + wa + '?text=' + encodeURIComponent(msg.join('\n'));
         if (win) win.location.href = url; else window.location.href = url;
@@ -349,7 +403,7 @@
         if (win) win.close();
         $('#coErr').textContent = (err && err.message) || 'Não foi possível enviar. Verifique sua internet e tente de novo.';
         btn.disabled = false; btn.innerHTML = icon('whatsapp') + ' Enviar pedido no WhatsApp';
-        loadData(); // atualiza estoque/produtos
+        loadData();
       });
     });
     animIn(); $('#coName').focus();

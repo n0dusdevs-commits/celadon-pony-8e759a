@@ -300,3 +300,24 @@ p{margin:0 0 1em}
 @media (max-width:760px){:root{--header-h:64px}.menu-btn{display:inline-grid}.nav{position:fixed;top:var(--header-h);left:12px;right:12px;flex-direction:column;gap:2px;padding:10px;background:rgba(255,255,255,.97);backdrop-filter:blur(14px);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow-lg);visibility:hidden;opacity:0;transform:translateY(-8px);transition:all .25s ease}.nav.open{visibility:visible;opacity:1;transform:none}.nav a{padding:14px 16px;font-size:1rem}.cards,.counters{grid-template-columns:1fr}.grid{grid-template-columns:repeat(2,1fr);gap:12px}.prod-info{padding:12px}.prod-name{font-size:.9rem}.pm{grid-template-columns:1fr}.pm-info{padding:22px 18px 24px}.foot-in{grid-template-columns:1fr}.fab{display:inline-flex}.phone-body{min-height:260px}.hero-badges li{font-size:.8rem}.fgrid{grid-template-columns:1fr}.prow{grid-template-columns:56px 1fr auto}.prow .pr{grid-column:2}.prow .acts{grid-column:3;grid-row:1/span 2;flex-direction:column}.adm-top h2{font-size:1.3rem}}
 @media (max-width:380px){.grid{grid-template-columns:1fr}}
 @media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}.reveal-on .reveal{opacity:1}.bubble{opacity:1;transform:none}}
+/* ---------- Pronta entrega x Sob encomenda ---------- */
+.kind-tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:6px 0 14px}
+.kind{display:grid;gap:2px;justify-items:start;text-align:left;padding:12px 16px;border-radius:14px;border:1px solid var(--line);background:var(--surface);cursor:pointer;font-weight:700;font-size:.92rem;color:var(--ink-2);transition:all .2s ease}
+.kind small{font-weight:600;font-size:.76rem;color:var(--ink-3)}
+.kind:hover{border-color:var(--gold-3)}
+.kind.on{background:var(--graphite);border-color:var(--graphite);color:var(--gold-1)}
+.kind.on small{color:#b9bcc4}
+.enc-note{font-size:.88rem;padding:12px 14px;border-radius:var(--radius-sm);background:rgba(217,181,106,.14);color:#5c4416;margin:0 0 16px}
+.tag.enc{background:#fff;color:var(--ink);border:1px solid var(--line)}
+.tag.enc+.tag,.tag+.tag.enc{top:44px}
+.kind-line{font-size:.76rem;font-weight:700;color:var(--ink-3);text-transform:uppercase;letter-spacing:.08em}
+.kind-line.enc{color:var(--gold-ink)}
+.bag-group{display:grid;gap:10px}
+.bag-group h3.gh{font-size:.82rem;text-transform:uppercase;letter-spacing:.1em;color:var(--ink-3);margin:6px 0 0;display:flex;justify-content:space-between}
+.min-bar{display:grid;gap:6px;padding:12px 14px;border-radius:var(--radius-sm);background:#fff;border:1px dashed rgba(185,143,67,.55);font-size:.85rem}
+.min-bar.ok{border-style:solid;border-color:rgba(31,138,91,.4)}
+.min-track{height:6px;border-radius:6px;background:var(--bg-soft);overflow:hidden}
+.min-track span{display:block;height:100%;background:var(--gold-grad);border-radius:6px}
+.min-bar.ok .min-track span{background:#1f8a5b}
+.pay-head{font-size:.8rem;text-transform:uppercase;letter-spacing:.1em;color:var(--ink-3);font-weight:800;margin:4px 0 2px}
+@media (max-width:760px){.kind-tabs{grid-template-columns:1fr 1fr}.kind-tabs .kind:first-child{grid-column:1/-1}}

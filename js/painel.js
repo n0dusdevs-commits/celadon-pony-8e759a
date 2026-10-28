@@ -25,7 +25,20 @@
 
   var SETTINGS = Object.assign({}, MM.DEFAULTS);
   var STATUS = { novo: 'Novo', confirmado: 'Venda confirmada', entregue: 'Entregue', cancelado: 'Cancelado' };
-  var PAY = { pix: 'PIX', dinheiro: 'Dinheiro', parcelado: 'Parcelado sem cartão' };
+  var PAY = { pix: 'PIX', dinheiro: 'Dinheiro', parcelado: 'Parcelado sem cartão', cartao: 'Cartão parcelado' };
+  function payText(o) {
+    var a = [];
+    if (o.payment) a.push((o.has_encomenda ? 'Pronta: ' : '') + PAY[o.payment]);
+    if (o.payment_encomenda) a.push((o.payment ? 'Encomenda: ' : 'Encomenda · ') + PAY[o.payment_encomenda]);
+    return a.join(' · ');
+  }
+  function itemsHTML(items) {
+    var pr = items.filter(function (i) { return (i.kind || 'pronta') === 'pronta'; }), en = items.filter(function (i) { return i.kind === 'encomenda'; });
+    var li = function (i) { return '<li>' + i.qty + 'x ' + esc(i.name) + (i.size ? ' · ' + esc(i.size) : '') + (i.color ? ' · ' + esc(i.color) : '') + ' · ' + brl(i.unit_cents * i.qty) + '</li>'; };
+    if (!en.length) return '<ul>' + pr.map(li).join('') + '</ul>';
+    return (pr.length ? '<div class="meta" style="margin-top:6px"><strong>Pronta entrega</strong></div><ul>' + pr.map(li).join('') + '</ul>' : '') +
+      '<div class="meta" style="margin-top:6px"><strong>Sob encomenda</strong> (buscar no fornecedor)</div><ul>' + en.map(li).join('') + '</ul>';
+  }
 
   /* =================== AUTENTICAÇÃO =================== */
   var mode = 'login';
@@ -90,7 +103,7 @@
   }
 
   /* =================== NAVEGAÇÃO =================== */
-  var TITLES = { inicio: 'Início', pedidos: 'Pedidos', parcelas: 'Parcelas', produtos: 'Produtos', repasse: 'Repasse', loja: 'Minha loja' };
+  var TITLES = { inicio: 'Início', pedidos: 'Pedidos', parcelas: 'Parcelas', encomendas: 'Comprar no fornecedor', produtos: 'Produtos', repasse: 'Repasse', loja: 'Minha loja' };
   var VIEWS = {};
   function go(v) {
     if (!VIEWS[v]) v = 'inicio';
@@ -146,7 +159,7 @@
         '<div class="stat' + (vencidas.length ? ' alert' : '') + '"><span>Vencidas</span><strong>' + vencidas.length + ' · ' + brl(sum(vencidas)) + '</strong></div>' +
         '<div class="stat"><span>Já recebido</span><strong>' + brl(sum(inst.filter(function (i) { return i.paid_at; }))) + '</strong></div></div>' +
         '<div class="panel"><h2>Pedidos esperando confirmação</h2>' + (novos.length ? novos.slice(0, 5).map(function (o) {
-          return '<div class="inst-row"><strong>' + esc(o.code) + '</strong> ' + esc(o.customer_name) + ' · ' + brl(o.total_cents) + ' · ' + PAY[o.payment] + ' <span class="muted">' + fmtDateTime(o.created_at) + '</span></div>';
+          return '<div class="inst-row"><strong>' + esc(o.code) + '</strong> ' + esc(o.customer_name) + ' · ' + brl(o.total_cents) + ' · ' + payText(o) + ' <span class="muted">' + fmtDateTime(o.created_at) + '</span></div>';
         }).join('') + '<p style="margin:10px 0 0"><button type="button" class="btn btn-dark btn-sm" data-go="pedidos">Ver pedidos</button></p>' : '<p class="muted">Nenhum pedido novo.</p>') + '</div>' +
         '<div class="panel"><h2>Parcelas vencidas e dos próximos 7 dias</h2>' + (vencidas.concat(proximas).length ? vencidas.concat(proximas).map(instRow).join('') + '<p style="margin:10px 0 0"><button type="button" class="btn btn-dark btn-sm" data-go="parcelas">Ver todas as parcelas</button></p>' : '<p class="muted">Nada vencendo por agora.</p>') + '</div>';
       bindInstActions($('#view'), VIEWS.inicio);
@@ -187,9 +200,9 @@
     if (o.status !== 'cancelado') acts.push('<button type="button" class="btn btn-ghost btn-sm" data-cancel>Cancelar</button>');
     return '<article class="order" data-id="' + o.id + '"><div>' +
       '<h3>' + esc(o.code) + ' · ' + esc(o.customer_name) + ' <span class="badge ' + o.status + '">' + STATUS[o.status] + '</span></h3>' +
-      '<div class="meta">' + fmtDateTime(o.created_at) + ' · ' + PAY[o.payment] + ' · ' + (o.delivery === 'entrega' ? 'Entrega' : 'Retirada') + '</div>' +
+      '<div class="meta">' + fmtDateTime(o.created_at) + ' · ' + payText(o) + ' · ' + (o.delivery === 'entrega' ? 'Entrega' : 'Retirada') + '</div>' +
       (o.address ? '<div class="meta">Endereço: ' + esc(o.address) + '</div>' : '') +
-      '<ul>' + o.items.map(function (i) { return '<li>' + i.qty + 'x ' + esc(i.name) + (i.size ? ' · ' + esc(i.size) : '') + (i.color ? ' · ' + esc(i.color) : '') + ' · ' + brl(i.unit_cents * i.qty) + '</li>'; }).join('') + '</ul>' +
+      itemsHTML(o.items) +
       (o.notes ? '<div class="meta" style="margin-top:6px">Obs.: ' + esc(o.notes) + '</div>' : '') +
       (insts.length ? '<div class="inst-list">' + insts.map(function (i) { return '<div class="inst-row">Parcela ' + i.number + ': ' + brl(i.amount_cents) + ' · vence ' + fmtDate(i.due_date) + ' ' + instBadge(i) + '</div>'; }).join('') + '</div>' : '') +
       '</div><div class="right"><span class="total">' + brl(o.total_cents) + '</span>' +
@@ -206,7 +219,7 @@
     var paidCount = (o.installments || []).filter(function (i) { return i.paid_at; }).length;
     var paidSum = (o.installments || []).filter(function (i) { return i.paid_at; }).reduce(function (s, i) { return s + i.amount_cents; }, 0);
     var restante = o.total_cents - paidSum;
-    var parcelado = o.payment === 'parcelado';
+    var parcelado = o.payment === 'parcelado' || o.payment_encomenda === 'cartao';
     var settle = SETTINGS.settlement_date || '';
     openDlg('<h2>' + (o.status === 'novo' ? 'Confirmar venda' : 'Editar parcelas') + '</h2>' +
       '<p class="muted" style="margin:0 0 12px">' + esc(o.code) + ' · ' + esc(o.customer_name) + ' · total ' + brl(o.total_cents) + (paidSum ? ' · já pago ' + brl(paidSum) : '') + '</p>' +
@@ -217,7 +230,7 @@
       '<label class="chk full"><input type="checkbox" id="cfPaid"' + (parcelado ? '' : ' checked') + '> Já recebi a 1ª parcela / pagamento à vista</label>' +
       '<p class="err full" id="cfErr" role="alert"></p>' +
       '<div class="full actions"><button class="btn btn-gold" type="submit">' + (o.status === 'novo' ? 'Confirmar venda' : 'Salvar parcelas') + '</button><button class="btn btn-ghost" type="button" data-close>Voltar</button></div>' +
-      (o.status === 'novo' ? '<p class="hint full">Ao confirmar, o estoque das peças é baixado automaticamente.</p>' : '') + '</form>');
+      (o.status === 'novo' ? '<p class="hint full">Ao confirmar, o estoque das peças de pronta entrega é baixado automaticamente. As peças sob encomenda vão para a lista “Comprar no fornecedor”.' + (o.payment_encomenda === 'cartao' ? ' Se a encomenda foi paga no cartão, registre aqui como recebida (o valor entra pela maquininha).' : '') + '</p>' : '') + '</form>');
     function build() {
       var n = Number($('#cfN').value), d0 = $('#cfD').value || todayISO();
       var base = Math.floor(restante / n), extra = restante - base * n, html = '';
@@ -292,7 +305,7 @@
         var l = PRODS.filter(function (p) { return !q || (p.name + p.category).toLowerCase().indexOf(q) >= 0; });
         $('#pl').innerHTML = l.length ? l.map(function (p) {
           return '<div class="prow' + (p.active ? '' : ' off') + '">' + (p.images[0] ? '<img class="thumb0" src="' + MM.img(p.images[0]) + '" alt="">' : '<div class="thumb0"></div>') +
-            '<div><h3>' + esc(p.name) + (p.featured ? ' ★' : '') + '</h3><small>' + esc(p.category) + ' · ' + esc(p.gender) + (p.stock != null ? ' · estoque ' + p.stock : '') + (p.consigned_qty != null ? ' · recebidas ' + p.consigned_qty : '') + (p.active ? '' : ' · oculto') + '</small></div>' +
+            '<div><h3>' + esc(p.name) + (p.featured ? ' ★' : '') + '</h3><small>' + esc(p.category) + ' · ' + esc(p.gender) + (p.availability === 'encomenda' ? ' · <strong>sob encomenda</strong>' : '') + (p.stock != null ? ' · estoque ' + p.stock : '') + (p.consigned_qty != null ? ' · recebidas ' + p.consigned_qty : '') + (p.active ? '' : ' · oculto') + '</small></div>' +
             '<span class="pr">' + brl(p.promo_cents || p.price_cents) + '</span><div class="acts"><button class="icon-btn" type="button" data-edit="' + p.id + '" aria-label="Editar">' + icon('edit') + '</button><button class="icon-btn" type="button" data-del="' + p.id + '" aria-label="Excluir">' + icon('trash') + '</button></div></div>';
         }).join('') : '<div class="empty">' + (PRODS.length ? 'Nada encontrado.' : 'Nenhum produto ainda. Toque em “Novo produto”.') + '</div>';
       }
@@ -321,10 +334,11 @@
       '<div class="field"><label for="f_promo">Preço promocional (R$)</label><input id="f_promo" name="promo" inputmode="decimal" placeholder="opcional" value="' + money(p.promo_cents) + '"></div>' +
       '<div class="field"><label for="f_cat">Categoria *</label><input id="f_cat" name="category" list="catList" placeholder="Camisetas" value="' + esc(p.category || '') + '"><datalist id="catList">' + cats.map(function (c) { return '<option value="' + esc(c) + '">'; }).join('') + '</datalist></div>' +
       '<div class="field"><label for="f_gender">Público</label><select id="f_gender" name="gender">' + ['unissex', 'feminino', 'masculino'].map(function (g) { return '<option value="' + g + '"' + ((p.gender || 'unissex') === g ? ' selected' : '') + '>' + g.charAt(0).toUpperCase() + g.slice(1) + '</option>'; }).join('') + '</select></div>' +
+      '<div class="field full"><label for="f_kind">Tipo de venda</label><select id="f_kind" name="availability"><option value="pronta"' + (p.availability !== 'encomenda' ? ' selected' : '') + '>Pronta entrega (tenho a peça)</option><option value="encomenda"' + (p.availability === 'encomenda' ? ' selected' : '') + '>Sob encomenda (busco no fornecedor, preço menor)</option></select><small id="kindHint"></small></div>' +
       '<div class="field"><label for="f_sizes">Tamanhos (separe por vírgula)</label><input id="f_sizes" name="sizes" placeholder="P, M, G, GG" value="' + esc(p.sizes.join(', ')) + '"></div>' +
       '<div class="field"><label for="f_colors">Cores (separe por vírgula)</label><input id="f_colors" name="colors" placeholder="Preto, Off-white" value="' + esc(p.colors.join(', ')) + '"></div>' +
-      '<div class="field"><label for="f_cons">Recebidas do revendedor</label><input id="f_cons" name="consigned" inputmode="numeric" placeholder="ex.: 5" value="' + (p.consigned_qty == null ? '' : p.consigned_qty) + '"><small>Usado no relatório do repasse.</small></div>' +
-      '<div class="field"><label for="f_stock">Estoque atual</label><input id="f_stock" name="stock" inputmode="numeric" placeholder="vazio = não controlar" value="' + (p.stock == null ? '' : p.stock) + '"><small>Baixa sozinho quando você confirma uma venda.</small></div>' +
+      '<div class="field" data-pronta><label for="f_cons">Recebidas do revendedor</label><input id="f_cons" name="consigned" inputmode="numeric" placeholder="ex.: 5" value="' + (p.consigned_qty == null ? '' : p.consigned_qty) + '"><small>Usado no relatório do repasse.</small></div>' +
+      '<div class="field" data-pronta><label for="f_stock">Estoque atual</label><input id="f_stock" name="stock" inputmode="numeric" placeholder="vazio = não controlar" value="' + (p.stock == null ? '' : p.stock) + '"><small>Baixa sozinho quando você confirma uma venda.</small></div>' +
       '<div class="field checks"><label><input type="checkbox" name="active"' + (p.active ? ' checked' : '') + '> Visível no site</label><label><input type="checkbox" name="featured"' + (p.featured ? ' checked' : '') + '> Destaque</label></div>' +
       '<div class="field full"><label for="f_desc">Descrição</label><textarea id="f_desc" name="description" rows="3" maxlength="1500">' + esc(p.description || '') + '</textarea></div>' +
       '<div class="field full"><span class="lbl">Fotos (até 6, a primeira é a capa)</span><div class="uploader"><span id="thumbs" style="display:contents"></span><label class="drop" id="drop"><input type="file" id="fileInput" accept="image/*" multiple hidden>' + icon('image') + '<span id="dropTxt">Adicionar fotos</span></label></div></div>' +
@@ -336,6 +350,8 @@
       $('#drop').hidden = imgs.length >= 6;
     }
     thumbs();
+    function kindUI() { var enc = $('#f_kind').value === 'encomenda'; $$('[data-pronta]').forEach(function (el) { el.hidden = enc; }); $('#kindHint').textContent = enc ? 'Sem controle de estoque. Entra no pedido mínimo de encomendas e na lista “Comprar no fornecedor”.' : 'Controla estoque e entra no relatório do repasse.'; }
+    $('#f_kind').addEventListener('change', kindUI); kindUI();
     $('#thumbs').addEventListener('click', function (e) {
       var rm = e.target.closest('[data-rm]'); if (rm) { removed.push(imgs.splice(Number(rm.getAttribute('data-rm')), 1)[0]); thumbs(); }
       var f = e.target.closest('[data-first]'); if (f) { var x = imgs.splice(Number(f.getAttribute('data-first')), 1)[0]; imgs.unshift(x); thumbs(); }
@@ -360,10 +376,11 @@
       if (!price || isNaN(price)) { err.textContent = 'Informe um preço válido (ex.: 89,90).'; return; }
       if (promo !== null && (isNaN(promo) || promo >= price)) { err.textContent = 'O preço promocional deve ser menor que o preço normal.'; return; }
       if (!cat) { err.textContent = 'Informe a categoria.'; return; }
-      var stock = stockS === '' ? null : parseInt(stockS, 10), cons = consS === '' ? null : parseInt(consS, 10);
+      var kind = f.availability.value;
+      var stock = (kind === 'encomenda' || stockS === '') ? null : parseInt(stockS, 10), cons = (kind === 'encomenda' || consS === '') ? null : parseInt(consS, 10);
       if ((stock !== null && (isNaN(stock) || stock < 0)) || (cons !== null && (isNaN(cons) || cons < 0))) { err.textContent = 'Use números inteiros em estoque e quantidade recebida.'; return; }
       var list = function (v) { return v.split(',').map(function (s) { return s.trim(); }).filter(Boolean).slice(0, 12); };
-      var row = { name: name, price_cents: price, promo_cents: promo, category: cat, gender: f.gender.value, sizes: list(f.sizes.value), colors: list(f.colors.value), stock: stock, consigned_qty: cons, active: f.active.checked, featured: f.featured.checked, description: f.description.value.trim(), images: imgs, updated_at: new Date().toISOString() };
+      var row = { availability: kind, name: name, price_cents: price, promo_cents: promo, category: cat, gender: f.gender.value, sizes: list(f.sizes.value), colors: list(f.colors.value), stock: stock, consigned_qty: cons, active: f.active.checked, featured: f.featured.checked, description: f.description.value.trim(), images: imgs, updated_at: new Date().toISOString() };
       $('#pSave').disabled = true;
       (isNew ? sb.from('products').insert(row) : sb.from('products').update(row).eq('id', p.id)).then(ok).then(function () {
         if (removed.length) sb.storage.from(MM_CONFIG.BUCKET).remove(removed);
@@ -406,6 +423,19 @@
     });
   };
 
+  /* =================== COMPRAR NO FORNECEDOR =================== */
+  VIEWS.encomendas = function () {
+    return sb.rpc('encomenda_report').then(function (r) {
+      var rows = ok(r) || [];
+      var tq = rows.reduce(function (s, x) { return s + Number(x.qty); }, 0), tc = rows.reduce(function (s, x) { return s + Number(x.total_cents); }, 0);
+      $('#view').innerHTML = '<div class="bar-tools no-print"><span class="muted">Peças sob encomenda de vendas <strong>confirmadas</strong> que ainda não foram entregues. Marque o pedido como “entregue” quando a cliente receber.</span><button type="button" class="btn btn-dark btn-sm" id="printEnc">Imprimir / salvar PDF</button></div>' +
+        '<div class="rep-wrap"><table class="rep"><thead><tr><th>Peça</th><th>Tamanho</th><th>Cor</th><th class="n">Qtd.</th><th class="n">Vendido por</th><th>Pedidos</th></tr></thead><tbody>' +
+        (rows.length ? rows.map(function (x) { return '<tr><td>' + esc(x.name) + '</td><td>' + esc(x.size || '–') + '</td><td>' + esc(x.color || '–') + '</td><td class="n">' + x.qty + '</td><td class="n">' + brl(Number(x.total_cents)) + '</td><td>' + esc(x.orders) + '</td></tr>'; }).join('') : '<tr><td colspan="6" class="muted">Nada para buscar no fornecedor agora.</td></tr>') +
+        '</tbody><tfoot><tr><td colspan="3">Total</td><td class="n">' + tq + '</td><td class="n">' + brl(tc) + '</td><td></td></tr></tfoot></table></div>';
+      $('#printEnc').addEventListener('click', function () { window.print(); });
+    });
+  };
+
   /* =================== MINHA LOJA =================== */
   VIEWS.loja = function () {
     return loadSettings().then(function () {
@@ -421,6 +451,11 @@
         '<div class="field"><label for="s_inst">Parcelamento sem cartão</label><select id="s_inst" name="installments_enabled"><option value="1"' + (s.installments_enabled !== false ? ' selected' : '') + '>Sim, oferecer</option><option value="0"' + (s.installments_enabled === false ? ' selected' : '') + '>Não oferecer</option></select><small>A cliente escolhe “parcelado” e você define as parcelas ao confirmar a venda.</small></div>' +
         inp('settlement_date', 'Data do acerto com o revendedor', { type: 'date', hint: 'O painel avisa se alguma parcela vencer depois dessa data.' }) +
         inp('installments_note', 'Aviso que a cliente vê sobre o parcelamento', { area: true, full: true }) +
+        '<h3 class="full">Peças sob encomenda</h3>' +
+        '<div class="field"><label for="s_enc">Vender sob encomenda</label><select id="s_enc" name="encomenda_enabled"><option value="1"' + (s.encomenda_enabled !== false ? ' selected' : '') + '>Sim</option><option value="0"' + (s.encomenda_enabled === false ? ' selected' : '') + '>Pausar encomendas</option></select></div>' +
+        '<div class="field"><label for="s_encmin">Pedido mínimo em encomendas (R$)</label><input id="s_encmin" name="encomenda_min" inputmode="decimal" value="' + money(Number(s.encomenda_min_cents) || 0) + '"><small>Soma só das peças sob encomenda. Use 0 para sem mínimo.</small></div>' +
+        inp('encomenda_prazo', 'Prazo estimado de chegada (opcional)', { ph: 'Ex.: 7 a 15 dias úteis' }) +
+        inp('encomenda_note', 'Aviso que a cliente vê sobre encomendas', { area: true, full: true }) +
         '<h3 class="full">Textos do site</h3>' +
         inp('store_name', 'Nome da loja') + inp('tagline', 'Frase curta') +
         inp('hero_title', 'Título principal', { full: true }) + inp('hero_subtitle', 'Subtítulo', { area: true, full: true }) +
@@ -434,6 +469,10 @@
         ['instagram', 'email', 'address', 'hours', 'installments_note', 'store_name', 'tagline', 'hero_title', 'hero_subtitle', 'about_title', 'announcement', 'about_text', 'settlement_date'].forEach(function (k) { d[k] = f[k].value.trim(); });
         d.whatsapp = wa; d.instagram = d.instagram.replace(/^@/, '').replace(/[^\w.]/g, '');
         d.installments_enabled = f.installments_enabled.value === '1';
+        d.encomenda_enabled = f.encomenda_enabled.value === '1';
+        var mn = String(f.encomenda_min.value).trim() === '' || Number(String(f.encomenda_min.value).replace(',', '.')) === 0 ? 0 : cents(f.encomenda_min.value);
+        if (isNaN(mn)) { err.textContent = 'Valor mínimo inválido (ex.: 450,00).'; return; }
+        d.encomenda_min_cents = mn; d.encomenda_prazo = f.encomenda_prazo.value.trim(); d.encomenda_note = f.encomenda_note.value.trim();
         if (!d.store_name) d.store_name = 'May Modas';
         if (!d.hero_title) d.hero_title = MM.DEFAULTS.hero_title;
         sb.from('store_settings').update({ data: d, updated_at: new Date().toISOString() }).eq('id', 1).then(ok).then(function () { SETTINGS = d; err.textContent = ''; toast('Salvo! O site já foi atualizado.'); }).catch(function (er) { err.textContent = er.message; });
