@@ -7,3 +7,15 @@
 
 /lojista.html
   X-Robots-Tag: noindex, nofollow
+
+/js/*
+  Cache-Control: no-cache
+
+/css/*
+  Cache-Control: no-cache
+
+/*.html
+  Cache-Control: no-cache
+
+/
+  Cache-Control: no-cache
