@@ -24,7 +24,7 @@ window.MM = (function () {
     about_text: 'A May Modas nasce com uma ideia simples: roupa boa não precisa ter gênero. Selecionamos peças confortáveis, atuais e com personalidade para quem quer se vestir sem regras.',
     announcement: '',
     encomenda_enabled: true,
-    encomenda_min_cents: 45000,
+    encomenda_min_cents: 0, encomenda_lote_size: 6, encomenda_sinal_pct: 50,
     encomenda_prazo: '',
     encomenda_note: 'Peças sob encomenda são buscadas direto no fornecedor depois do seu pedido, por isso saem mais em conta. O prazo de chegada é combinado com a lojista.'
   };

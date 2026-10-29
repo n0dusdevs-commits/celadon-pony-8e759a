@@ -34,10 +34,10 @@
   }
   function itemsHTML(items) {
     var pr = items.filter(function (i) { return (i.kind || 'pronta') === 'pronta'; }), en = items.filter(function (i) { return i.kind === 'encomenda'; });
-    var li = function (i) { return '<li>' + i.qty + 'x ' + esc(i.name) + (i.size ? ' · ' + esc(i.size) : '') + (i.color ? ' · ' + esc(i.color) : '') + ' · ' + brl(i.unit_cents * i.qty) + '</li>'; };
+    var li = function (i) { return '<li>' + i.qty + 'x ' + esc(i.name) + (i.size ? ' · ' + esc(i.size) : '') + (i.color ? ' · ' + esc(i.color) : '') + ' · ' + brl(i.unit_cents * i.qty) + (i.lot_number ? ' · <strong>lote nº ' + i.lot_number + '</strong>' : '') + '</li>'; };
     if (!en.length) return '<ul>' + pr.map(li).join('') + '</ul>';
     return (pr.length ? '<div class="meta" style="margin-top:6px"><strong>Pronta entrega</strong></div><ul>' + pr.map(li).join('') + '</ul>' : '') +
-      '<div class="meta" style="margin-top:6px"><strong>Sob encomenda</strong> (buscar no fornecedor)</div><ul>' + en.map(li).join('') + '</ul>';
+      '<div class="meta" style="margin-top:6px"><strong>Sob encomenda</strong> (compra coletiva, veja em Lotes)</div><ul>' + en.map(li).join('') + '</ul>';
   }
 
   /* =================== AUTENTICAÇÃO =================== */
@@ -103,7 +103,7 @@
   }
 
   /* =================== NAVEGAÇÃO =================== */
-  var TITLES = { inicio: 'Início', pedidos: 'Pedidos', parcelas: 'Parcelas', encomendas: 'Comprar no fornecedor', produtos: 'Produtos', repasse: 'Repasse', loja: 'Minha loja' };
+  var TITLES = { inicio: 'Início', pedidos: 'Pedidos', parcelas: 'Parcelas', encomendas: 'Lotes · compra coletiva', produtos: 'Produtos', repasse: 'Repasse', loja: 'Minha loja' };
   var VIEWS = {};
   function go(v) {
     if (!VIEWS[v]) v = 'inicio';
@@ -202,6 +202,7 @@
       '<h3>' + esc(o.code) + ' · ' + esc(o.customer_name) + ' <span class="badge ' + o.status + '">' + STATUS[o.status] + '</span></h3>' +
       '<div class="meta">' + fmtDateTime(o.created_at) + ' · ' + payText(o) + ' · ' + (o.delivery === 'entrega' ? 'Entrega' : 'Retirada') + '</div>' +
       (o.address ? '<div class="meta">Endereço: ' + esc(o.address) + '</div>' : '') +
+      (o.sinal_cents != null ? '<div class="meta">Sinal da encomenda: <strong>' + brl(o.sinal_cents) + '</strong></div>' : '') +
       itemsHTML(o.items) +
       (o.notes ? '<div class="meta" style="margin-top:6px">Obs.: ' + esc(o.notes) + '</div>' : '') +
       (insts.length ? '<div class="inst-list">' + insts.map(function (i) { return '<div class="inst-row">Parcela ' + i.number + ': ' + brl(i.amount_cents) + ' · vence ' + fmtDate(i.due_date) + ' ' + instBadge(i) + '</div>'; }).join('') + '</div>' : '') +
@@ -223,6 +224,7 @@
     var settle = SETTINGS.settlement_date || '';
     openDlg('<h2>' + (o.status === 'novo' ? 'Confirmar venda' : 'Editar parcelas') + '</h2>' +
       '<p class="muted" style="margin:0 0 12px">' + esc(o.code) + ' · ' + esc(o.customer_name) + ' · total ' + brl(o.total_cents) + (paidSum ? ' · já pago ' + brl(paidSum) : '') + '</p>' +
+      (o.sinal_cents != null && !paidSum ? '<p class="note-box" style="margin:0 0 12px">Encomenda com sinal de <strong>' + brl(o.sinal_cents) + '</strong>. Dica: use 2 parcelas, a 1ª com o sinal (já recebida) e a 2ª com o restante, vencendo quando o lote fechar.</p>' : '') +
       '<form id="cf" class="fgrid" novalidate>' +
       '<div class="field"><label for="cfN">Quantidade de parcelas</label><select id="cfN">' + [1, 2, 3, 4, 5, 6].map(function (n) { return '<option value="' + n + '"' + (n === (parcelado ? 3 : 1) ? ' selected' : '') + '>' + (n === 1 ? 'À vista (1x)' : n + 'x') + '</option>'; }).join('') + '</select></div>' +
       '<div class="field"><label for="cfD">1º vencimento</label><input id="cfD" type="date" value="' + (parcelado ? addMonths(todayISO(), 1) : todayISO()) + '"></div>' +
@@ -230,7 +232,7 @@
       '<label class="chk full"><input type="checkbox" id="cfPaid"' + (parcelado ? '' : ' checked') + '> Já recebi a 1ª parcela / pagamento à vista</label>' +
       '<p class="err full" id="cfErr" role="alert"></p>' +
       '<div class="full actions"><button class="btn btn-gold" type="submit">' + (o.status === 'novo' ? 'Confirmar venda' : 'Salvar parcelas') + '</button><button class="btn btn-ghost" type="button" data-close>Voltar</button></div>' +
-      (o.status === 'novo' ? '<p class="hint full">Ao confirmar, o estoque das peças de pronta entrega é baixado automaticamente. As peças sob encomenda vão para a lista “Comprar no fornecedor”.' + (o.payment_encomenda === 'cartao' ? ' Se a encomenda foi paga no cartão, registre aqui como recebida (o valor entra pela maquininha).' : '') + '</p>' : '') + '</form>');
+      (o.status === 'novo' ? '<p class="hint full">Ao confirmar, o estoque das peças de pronta entrega é baixado automaticamente. As peças sob encomenda entram nos lotes (tela “Lotes”).' + (o.payment_encomenda === 'cartao' ? ' Se a encomenda foi paga no cartão, registre aqui como recebida (o valor entra pela maquininha).' : '') + '</p>' : '') + '</form>');
     function build() {
       var n = Number($('#cfN').value), d0 = $('#cfD').value || todayISO();
       var base = Math.floor(restante / n), extra = restante - base * n, html = '';
@@ -350,7 +352,7 @@
       $('#drop').hidden = imgs.length >= 6;
     }
     thumbs();
-    function kindUI() { var enc = $('#f_kind').value === 'encomenda'; $$('[data-pronta]').forEach(function (el) { el.hidden = enc; }); $('#kindHint').textContent = enc ? 'Sem controle de estoque. A categoria é a linha: o pedido mínimo vale para cada linha. Entra na lista “Comprar no fornecedor”.' : 'Controla estoque e entra no relatório do repasse.'; }
+    function kindUI() { var enc = $('#f_kind').value === 'encomenda'; $$('[data-pronta]').forEach(function (el) { el.hidden = enc; }); $('#kindHint').textContent = enc ? 'Sem controle de estoque. A categoria é a linha: os pedidos de cada linha se juntam em lotes (compra coletiva). Aparece na tela “Lotes”.' : 'Controla estoque e entra no relatório do repasse.'; }
     $('#f_kind').addEventListener('change', kindUI); kindUI();
     $('#thumbs').addEventListener('click', function (e) {
       var rm = e.target.closest('[data-rm]'); if (rm) { removed.push(imgs.splice(Number(rm.getAttribute('data-rm')), 1)[0]); thumbs(); }
@@ -424,16 +426,68 @@
     });
   };
 
-  /* =================== COMPRAR NO FORNECEDOR =================== */
+  /* =================== LOTES (COMPRA COLETIVA) =================== */
+  var LOT_ST = { aberto: ['Aberto', 'aberta'], fechado: ['Fechado · comprar', 'novo'], comprado: ['Comprado no fornecedor', 'confirmado'], entregue: ['Entregue', 'entregue'] };
+  var lotFilter = 'ativos';
   VIEWS.encomendas = function () {
-    return sb.rpc('encomenda_report').then(function (r) {
-      var rows = ok(r) || [];
-      var tq = rows.reduce(function (s, x) { return s + Number(x.qty); }, 0), tc = rows.reduce(function (s, x) { return s + Number(x.total_cents); }, 0);
-      $('#view').innerHTML = '<div class="bar-tools no-print"><span class="muted">Peças sob encomenda de vendas <strong>confirmadas</strong> que ainda não foram entregues. Marque o pedido como “entregue” quando a cliente receber.</span><button type="button" class="btn btn-dark btn-sm" id="printEnc">Imprimir / salvar PDF</button></div>' +
-        '<div class="rep-wrap"><table class="rep"><thead><tr><th>Peça</th><th>Tamanho</th><th>Cor</th><th class="n">Qtd.</th><th class="n">Vendido por</th><th>Pedidos</th></tr></thead><tbody>' +
-        (rows.length ? rows.map(function (x) { return '<tr><td>' + esc(x.name) + '</td><td>' + esc(x.size || '–') + '</td><td>' + esc(x.color || '–') + '</td><td class="n">' + x.qty + '</td><td class="n">' + brl(Number(x.total_cents)) + '</td><td>' + esc(x.orders) + '</td></tr>'; }).join('') : '<tr><td colspan="6" class="muted">Nada para buscar no fornecedor agora.</td></tr>') +
-        '</tbody><tfoot><tr><td colspan="3">Total</td><td class="n">' + tq + '</td><td class="n">' + brl(tc) + '</td><td></td></tr></tfoot></table></div>';
+    var ql = sb.from('lots').select('*').order('created_at', { ascending: false });
+    if (lotFilter === 'ativos') ql = ql.neq('status', 'entregue'); else ql = ql.eq('status', 'entregue');
+    return Promise.all([ql, sb.from('orders').select('id,code,customer_name,customer_phone,items,sinal_cents,status').eq('has_encomenda', true).neq('status', 'cancelado').order('created_at').limit(1000)]).then(function (r) {
+      var lots = ok(r[0]) || [], orders = ok(r[1]) || [];
+      var rank = { fechado: 0, aberto: 1, comprado: 2, entregue: 3 };
+      lots.sort(function (a, b) { return (rank[a.status] - rank[b.status]) || a.category.localeCompare(b.category, 'pt-BR') || a.number - b.number; });
+      function lotData(lot) {
+        var custs = [], byCust = {}, pieces = {};
+        orders.forEach(function (o) {
+          var encTotal = o.items.filter(function (i) { return i.kind === 'encomenda'; }).reduce(function (s, i) { return s + i.unit_cents * i.qty; }, 0);
+          o.items.filter(function (i) { return i.lot === lot.id; }).forEach(function (i) {
+            var c = byCust[o.id]; if (!c) { c = byCust[o.id] = { o: o, lines: [], cents: 0, qty: 0, encTotal: encTotal }; custs.push(c); }
+            c.lines.push(i); c.cents += i.unit_cents * i.qty; c.qty += i.qty;
+            var k = i.name + '|' + (i.size || '') + '|' + (i.color || ''); pieces[k] = (pieces[k] || 0) + i.qty;
+          });
+        });
+        custs.forEach(function (c) { c.sinal = c.o.sinal_cents != null && c.encTotal ? Math.round(c.o.sinal_cents * c.cents / c.encTotal) : 0; });
+        return { custs: custs, pieces: pieces };
+      }
+      function msgFor(lot, c) {
+        var nome = (c.o.customer_name || '').split(' ')[0], resto = c.cents - c.sinal;
+        var itens = c.lines.map(function (i) { return i.qty + 'x ' + i.name + (i.size ? ' (' + i.size + ')' : ''); }).join(', ');
+        if (lot.status === 'aberto') return 'Oi, ' + nome + '! Seu pedido ' + c.o.code + ' (' + itens + ') está no lote nº ' + lot.number + ' de ' + lot.category + ', que já tem ' + lot.qty + ' de ' + lot.size + ' peças. Assim que completar eu compro no fabricante e te aviso!';
+        if (lot.status === 'fechado') return 'Oi, ' + nome + '! O lote nº ' + lot.number + ' de ' + lot.category + ' fechou! Vou fazer a compra no fabricante. Seu pedido ' + c.o.code + ': ' + itens + ', total ' + brl(c.cents) + (c.sinal ? ', sinal pago ' + brl(c.sinal) : '') + '. ' + (resto > 0 ? 'Falta acertar ' + brl(resto) + '.' : '') + ' Te aviso quando chegar!';
+        if (lot.status === 'comprado') return 'Oi, ' + nome + '! Suas peças do pedido ' + c.o.code + ' (' + itens + ') já foram compradas no fabricante e estão a caminho. Te aviso assim que chegarem para combinar a entrega!';
+        return 'Oi, ' + nome + '! Suas peças do pedido ' + c.o.code + ' chegaram! Vamos combinar a entrega?';
+      }
+      function card(lot) {
+        var d = lotData(lot), st = LOT_ST[lot.status], pct = Math.min(100, Math.round(lot.qty / lot.size * 100));
+        var acts = [];
+        if (lot.status === 'aberto') acts.push('<button type="button" class="btn btn-ghost btn-sm" data-lot-set="fechado">Fechar lote agora</button>');
+        if (lot.status === 'fechado') acts.push('<button type="button" class="btn btn-gold btn-sm" data-lot-set="comprado">Comprei no fornecedor</button>');
+        if (lot.status === 'comprado') acts.push('<button type="button" class="btn btn-dark btn-sm" data-lot-set="entregue">Peças entregues</button>');
+        var pk = Object.keys(d.pieces).sort();
+        return '<article class="panel lot" data-lot="' + lot.id + '"><div class="lot-head"><h2>' + esc(lot.category) + ' · lote nº ' + lot.number + ' <span class="badge ' + st[1] + '">' + st[0] + '</span></h2><div class="acts">' + acts.join('') + '</div></div>' +
+          '<div class="lot-prog"><div><strong>' + (lot.qty >= lot.size ? lot.qty + ' peças (meta ' + lot.size + ')' : lot.qty + ' de ' + lot.size + ' peças') + '</strong>' + (lot.qty < lot.size ? ' · faltam ' + (lot.size - lot.qty) : '') + '</div><div class="min-track"><span style="width:' + pct + '%"></span></div></div>' +
+          (pk.length ? '<div class="rep-wrap"><table class="rep"><thead><tr><th>Comprar no fornecedor</th><th>Tamanho</th><th>Cor</th><th class="n">Qtd.</th></tr></thead><tbody>' + pk.map(function (k) { var p = k.split('|'); return '<tr><td>' + esc(p[0]) + '</td><td>' + esc(p[1] || '–') + '</td><td>' + esc(p[2] || '–') + '</td><td class="n">' + d.pieces[k] + '</td></tr>'; }).join('') + '</tbody></table></div>' : '<p class="muted">Nenhuma peça neste lote.</p>') +
+          (d.custs.length ? '<h3 class="lot-sub">Clientes</h3>' + d.custs.map(function (c) {
+            return '<div class="inst-row lot-cust"><div><strong>' + esc(c.o.customer_name) + '</strong> · ' + esc(c.o.code) + ' · ' + c.qty + (c.qty === 1 ? ' peça' : ' peças') + ' · ' + brl(c.cents) + (c.sinal ? ' · sinal ' + brl(c.sinal) + ' · resta ' + brl(c.cents - c.sinal) : '') +
+              '<div class="meta">' + c.lines.map(function (i) { return i.qty + 'x ' + esc(i.name) + (i.size ? ' (' + esc(i.size) + ')' : ''); }).join(', ') + '</div></div>' +
+              '<a class="btn btn-ghost btn-sm" href="' + waLink(c.o.customer_phone, msgFor(lot, c)) + '" target="_blank" rel="noopener">' + icon('whatsapp') + ' Avisar</a></div>';
+          }).join('') : '') + '</article>';
+      }
+      $('#view').innerHTML = '<div class="bar-tools no-print"><div class="chips" id="lf">' + [['ativos', 'Em andamento'], ['entregues', 'Entregues']].map(function (c) { return '<button type="button" class="chip' + (lotFilter === c[0] ? ' on' : '') + '" data-f="' + c[0] + '">' + c[1] + '</button>'; }).join('') + '</div><button type="button" class="btn btn-dark btn-sm" id="printEnc">Imprimir / salvar PDF</button></div>' +
+        '<p class="hint no-print">Cada linha sob encomenda tem um lote de ' + (Number(SETTINGS.encomenda_lote_size) || 6) + ' peças. O lote fecha sozinho quando completa; você também pode fechar antes. Use “Avisar” para mandar a mensagem pronta no WhatsApp de cada cliente.</p>' +
+        (lots.length ? lots.map(card).join('') : '<div class="empty">' + (lotFilter === 'ativos' ? 'Nenhum lote em andamento. Os lotes aparecem aqui quando chegar o primeiro pedido sob encomenda.' : 'Nenhum lote entregue ainda.') + '</div>');
+      $('#lf').addEventListener('click', function (e) { var b = e.target.closest('[data-f]'); if (b) { lotFilter = b.getAttribute('data-f'); VIEWS.encomendas(); } });
       $('#printEnc').addEventListener('click', function () { window.print(); });
+      $$('[data-lot]').forEach(function (el) {
+        el.addEventListener('click', function (e) {
+          var b = e.target.closest('[data-lot-set]'); if (!b) return;
+          var st = b.getAttribute('data-lot-set'), upd = { status: st };
+          if (st === 'fechado') upd.closed_at = new Date().toISOString();
+          if (st === 'comprado') upd.bought_at = new Date().toISOString();
+          b.disabled = true;
+          sb.from('lots').update(upd).eq('id', el.getAttribute('data-lot')).then(ok).then(function () { toast(st === 'fechado' ? 'Lote fechado. As próximas encomendas vão para um lote novo.' : st === 'comprado' ? 'Lote marcado como comprado' : 'Lote entregue'); VIEWS.encomendas(); }).catch(function (er) { b.disabled = false; fail(er); });
+        });
+      });
     });
   };
 
@@ -454,7 +508,8 @@
         inp('installments_note', 'Aviso que a cliente vê sobre o parcelamento', { area: true, full: true }) +
         '<h3 class="full">Peças sob encomenda</h3>' +
         '<div class="field"><label for="s_enc">Vender sob encomenda</label><select id="s_enc" name="encomenda_enabled"><option value="1"' + (s.encomenda_enabled !== false ? ' selected' : '') + '>Sim</option><option value="0"' + (s.encomenda_enabled === false ? ' selected' : '') + '>Pausar encomendas</option></select></div>' +
-        '<div class="field"><label for="s_encmin">Pedido mínimo por linha sob encomenda (R$)</label><input id="s_encmin" name="encomenda_min" inputmode="decimal" value="' + money(Number(s.encomenda_min_cents) || 0) + '"><small>Vale para cada linha (categoria) separada, por exemplo R$350 em Camiseta Oversized. Use 0 para sem mínimo.</small></div>' +
+        '<div class="field"><label for="s_lote">Peças por lote (compra coletiva)</label><input id="s_lote" name="encomenda_lote_size" inputmode="numeric" value="' + (Number(s.encomenda_lote_size) || 6) + '"><small>Cada linha (categoria) junta pedidos de várias clientes até completar este número. Vale para os próximos lotes.</small></div>' +
+        '<div class="field"><label for="s_sinal">Sinal no pedido (%)</label><input id="s_sinal" name="encomenda_sinal_pct" inputmode="numeric" value="' + (s.encomenda_sinal_pct == null ? 50 : s.encomenda_sinal_pct) + '"><small>Quanto a cliente paga ao pedir. O restante é pago quando o lote fecha. Use 0 para sem sinal ou 100 para tudo no pedido.</small></div>' +
         inp('encomenda_prazo', 'Prazo estimado de chegada (opcional)', { ph: 'Ex.: 7 a 15 dias úteis' }) +
         inp('encomenda_note', 'Aviso que a cliente vê sobre encomendas', { area: true, full: true }) +
         '<h3 class="full">Textos do site</h3>' +
@@ -471,9 +526,10 @@
         d.whatsapp = wa; d.instagram = d.instagram.replace(/^@/, '').replace(/[^\w.]/g, '');
         d.installments_enabled = f.installments_enabled.value === '1';
         d.encomenda_enabled = f.encomenda_enabled.value === '1';
-        var mn = String(f.encomenda_min.value).trim() === '' || Number(String(f.encomenda_min.value).replace(',', '.')) === 0 ? 0 : cents(f.encomenda_min.value);
-        if (isNaN(mn)) { err.textContent = 'Valor mínimo inválido (ex.: 350,00).'; return; }
-        d.encomenda_min_cents = mn; d.encomenda_prazo = f.encomenda_prazo.value.trim(); d.encomenda_note = f.encomenda_note.value.trim();
+        var ls = Number(f.encomenda_lote_size.value), sp = Number(String(f.encomenda_sinal_pct.value).replace('%', '').trim());
+        if (!(ls >= 1 && ls <= 500 && Math.floor(ls) === ls)) { err.textContent = 'Peças por lote: use um número inteiro, ex.: 6.'; return; }
+        if (!(sp >= 0 && sp <= 100)) { err.textContent = 'Sinal: use um número de 0 a 100.'; return; }
+        d.encomenda_lote_size = ls; d.encomenda_sinal_pct = Math.round(sp); d.encomenda_min_cents = 0; d.encomenda_prazo = f.encomenda_prazo.value.trim(); d.encomenda_note = f.encomenda_note.value.trim();
         if (!d.store_name) d.store_name = 'May Modas';
         if (!d.hero_title) d.hero_title = MM.DEFAULTS.hero_title;
         sb.from('store_settings').update({ data: d, updated_at: new Date().toISOString() }).eq('id', 1).then(ok).then(function () { SETTINGS = d; err.textContent = ''; toast('Salvo! O site já foi atualizado.'); }).catch(function (er) { err.textContent = er.message; });

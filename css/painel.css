@@ -83,3 +83,10 @@ table.rep tfoot td{font-weight:800;background:#faf9f6}
   .order .acts{justify-content:flex-start}
 }
 @media print{.side,.top,.bar-tools,.no-print{display:none!important}.app{display:block}.main{padding:0}}
+.lot-head{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}
+.lot-head h2{margin:0}
+.lot-prog{display:grid;gap:6px;margin:0 0 14px;font-size:.92rem}
+.lot-sub{font-size:.8rem;text-transform:uppercase;letter-spacing:.1em;color:var(--ink-3);margin:16px 0 6px}
+.lot-cust{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.min-track{height:6px;border-radius:6px;background:var(--bg-soft);overflow:hidden}
+.min-track span{display:block;height:100%;background:var(--gold-grad);border-radius:6px}

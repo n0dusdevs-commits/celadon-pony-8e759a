@@ -1,1 +1,1 @@
-may-modas deploy check 2026-10-28 precos
+may-modas deploy check 2026-10-29 lotes

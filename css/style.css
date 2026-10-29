@@ -330,3 +330,10 @@ p{margin:0 0 1em}
 .enc-line-head h3{font-family:var(--font-display);font-size:clamp(1.6rem,3vw,2.1rem);font-weight:700;line-height:1.1}
 .enc-min{font-size:.88rem;color:var(--gold-ink);background:rgba(217,181,106,.16);padding:6px 12px;border-radius:999px}
 .enc-line{scroll-margin-top:calc(var(--header-h) + 16px)}
+.lot-bar{display:grid;gap:8px;padding:12px 14px;border-radius:var(--radius-sm);background:#fff;border:1px dashed rgba(185,143,67,.55);font-size:.88rem;margin:0 0 20px}
+.lot-bar.ok{border-style:solid;border-color:rgba(31,138,91,.4)}
+.lot-bar.ok .min-track span{background:#1f8a5b}
+.lot-txt{display:flex;flex-wrap:wrap;justify-content:space-between;gap:4px 12px;color:var(--ink-2)}
+.lot-txt span:last-child{color:var(--gold-ink);font-weight:700}
+.bag-group .lot-bar{margin:4px 0 0}
+.pm-info .lot-bar{margin:4px 0}
