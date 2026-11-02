@@ -1,1 +1,1 @@
-may-modas deploy check 2026-10-29 lotes
+may-modas deploy check 2026-11-02 fornecedor
