@@ -1,1 +1,1 @@
-may-modas deploy check 2026-11-02 fornecedor
+may-modas deploy check 2026-11-02 cores

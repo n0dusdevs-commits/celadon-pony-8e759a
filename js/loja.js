@@ -16,15 +16,18 @@
   function isEnc(p) { return (p.availability || 'pronta') === 'encomenda'; }
   var LOTS = {};
   function lotSize() { return Math.max(1, Number(S.encomenda_lote_size) || 6); }
-  function sinalPct() { var n = Number(S.encomenda_sinal_pct); return isFinite(n) && n >= 0 ? Math.min(100, n) : 50; }
+  function lotsOn() { return S.encomenda_lotes === true; }
+  function sinalPct() { if (!lotsOn()) return 0; var n = Number(S.encomenda_sinal_pct); return isFinite(n) && n >= 0 ? Math.min(100, n) : 50; }
   function sinalOf(c) { return Math.ceil(c * sinalPct() / 100); }
   function lotOf(cat) { return LOTS[cat] || { number: null, qty: 0, size: lotSize() }; }
   function encNoteText() {
+    if (!lotsOn()) return 'A lojista pede a peça ao fornecedor depois da sua compra e te avisa quando chegar.' + (S.encomenda_prazo ? ' Prazo estimado: ' + S.encomenda_prazo + '.' : ' O prazo de entrega é combinado com ela.') + (S.encomenda_note ? ' ' + S.encomenda_note : '');
     return 'Seu pedido entra no lote da linha junto com o de outras clientes. Quando o lote completa ' + lotSize() + ' peças, a lojista compra no fabricante, separa e entrega.' +
       (sinalPct() ? ' Você paga ' + (sinalPct() >= 100 ? 'o valor total' : 'um sinal de ' + sinalPct() + '%') + ' no pedido' + (sinalPct() < 100 ? ' e o restante quando o lote fechar.' : '.') : ' O pagamento é feito quando o lote fechar.') +
       (S.encomenda_prazo ? ' Prazo estimado depois do fechamento: ' + S.encomenda_prazo + '.' : '') + (S.encomenda_note ? ' ' + S.encomenda_note : '');
   }
   function lotBarHTML(cat, extra) {
+    if (!lotsOn()) return '';
     var l = lotOf(cat), size = l.size || lotSize(), q = l.qty + (extra || 0), falta = Math.max(0, size - q), pct = Math.min(100, Math.round(q / size * 100));
     return '<div class="lot-bar' + (falta ? '' : ' ok') + '"><div class="lot-txt"><span>' + (l.number ? 'Lote nº ' + l.number : 'Novo lote') + ': <strong>' + (q >= size ? q + ' peças (meta ' + size + ')' : q + ' de ' + size + ' peças') + '</strong></span><span>' +
       (falta ? 'faltam ' + falta + (falta === 1 ? ' peça' : ' peças') + ' para fechar' : 'lote completo!') + '</span></div><div class="min-track"><span style="width:' + pct + '%"></span></div></div>';
@@ -72,7 +75,7 @@
     var hasEnc = encOn() && PRODUCTS.some(isEnc), hasPronta = PRODUCTS.some(function (p) { return !isEnc(p); });
     $('#encomenda').hidden = !hasEnc;
     $$('[data-enc-link]').forEach(function (a) { a.hidden = !hasEnc; });
-    $('#encLead').textContent = 'Compra coletiva com preço de atacado: peça quantas quiser. Seu pedido soma com o de outras clientes e, quando o lote da linha completa ' + lotSize() + ' peças, a lojista compra no fabricante e entrega.' + (sinalPct() && sinalPct() < 100 ? ' Sinal de ' + sinalPct() + '% no pedido e o restante quando o lote fechar.' : '');
+    $('#encLead').textContent = !lotsOn() ? 'Peças pedidas ao fornecedor depois da sua compra, com preço especial. Escolha modelo, cor e tamanho; a lojista confirma o prazo com você.' : 'Compra coletiva com preço de atacado: peça quantas quiser. Seu pedido soma com o de outras clientes e, quando o lote da linha completa ' + lotSize() + ' peças, a lojista compra no fabricante e entrega.' + (sinalPct() && sinalPct() < 100 ? ' Sinal de ' + sinalPct() + '% no pedido e o restante quando o lote fechar.' : '');
     $('#faqEncItem').hidden = !hasEnc;
     $('#faqEnc').textContent = 'São peças compradas direto do fabricante, com preço de atacado. ' + encNoteText() + ' Pagamento em PIX, dinheiro ou cartão parcelado.';
     var cats = {}; PRODUCTS.forEach(function (p) { cats[p.category] = 1; });
@@ -190,7 +193,7 @@
     return '<article class="prod"><button type="button" class="prod-media" data-open="' + esc(p.id) + '" aria-label="Ver ' + esc(p.name) + '">' + img + tag + '</button>' +
       '<div class="prod-info">' + (enc ? '' : '<span class="prod-cat">' + esc(p.category) + '</span>') + '<h3 class="prod-name">' + esc(p.name) + '</h3>' +
       '<div class="price">' + (promo ? '<s>' + brl(p.price_cents) + '</s>' : '') + '<strong>' + brl(priceOf(p)) + '</strong></div>' +
-      (enc ? '<span class="inst">' + 'Compra coletiva · lote de ' + lotSize() + ' peças' + '</span>' : instLine()) +
+      (enc ? '<span class="inst">' + (lotsOn() ? 'Compra coletiva · lote de ' + lotSize() + ' peças' : [p.colors && p.colors.length ? p.colors.length + (p.colors.length === 1 ? ' cor' : ' cores') : '', p.sizes && p.sizes.length ? 'Tam. ' + p.sizes.join('/') : ''].filter(Boolean).join(' · ') || 'Sob encomenda') + '</span>' : instLine()) +
       '<button type="button" class="btn btn-dark btn-block prod-add" data-open="' + esc(p.id) + '"' + (soldOut ? ' disabled' : '') + '>' + (soldOut ? 'Esgotado' : 'Escolher') + '</button></div></article>';
   }
   function renderGrid(animate, msg) {
@@ -249,7 +252,7 @@
       '<div class="pm"><div class="pm-gallery">' + gallery + '</div><form class="pm-info" id="pmForm" novalidate>' +
       '<span class="prod-cat">' + esc(p.category) + ' · ' + esc(p.gender) + '</span><h2 id="pmName">' + esc(p.name) + '</h2>' +
       '<div class="price">' + (promo ? '<s>' + brl(p.price_cents) + '</s>' : '') + '<strong>' + brl(priceOf(p)) + '</strong></div>' +
-      (isEnc(p) ? lotBarHTML(p.category) + '<p class="note-box"><strong>Sob encomenda · compra coletiva.</strong> ' + esc(encNoteText()) + '</p>' : instLine()) +
+      (isEnc(p) ? lotBarHTML(p.category) + '<p class="note-box"><strong>Sob encomenda' + (lotsOn() ? ' · compra coletiva' : '') + '.</strong> ' + esc(encNoteText()) + '</p>' : instLine()) +
       (p.description ? '<p class="pm-desc">' + esc(p.description) + '</p>' : '') +
       optGroup('size', 'Tamanho', p.sizes) + optGroup('color', 'Cor', p.colors) +
       '<div><span class="sr" id="qtyLbl">Quantidade</span><div class="qty" role="group" aria-labelledby="qtyLbl"><button type="button" data-q="-1" aria-label="Diminuir">' + icon('minus') + '</button><output id="pmQty">1</output><button type="button" data-q="1" aria-label="Aumentar">' + icon('plus') + '</button></div></div>' +
@@ -340,6 +343,7 @@
       '<div class="line-right"><div class="qty" role="group" aria-label="Quantidade"><button type="button" data-step="-1" aria-label="Diminuir">' + icon('minus') + '</button><output>' + i.qty + '</output><button type="button" data-step="1" aria-label="Aumentar">' + icon('plus') + '</button></div><button type="button" class="linklike" data-remove>Remover</button></div></div>';
   }
   function lotGroupHTML(g) {
+    if (!lotsOn()) return '';
     var l = lotOf(g.name), size = l.size || lotSize(), q = l.qty + g.qty, falta = Math.max(0, size - q);
     return lotBarHTML(g.name, g.qty) + '<small class="inst">' + (falta ? 'Com o seu pedido o lote fica com ' + q + ' de ' + size + ' peças. Quando completar, a lojista compra e te avisa.' : 'Seu pedido completa o lote! A lojista já pode comprar no fabricante.') + '</small>';
   }
@@ -393,7 +397,7 @@
       '<fieldset class="field opt-group"><legend>Como quer receber?</legend><div class="seg"><label class="pay"><input type="radio" name="delivery" value="retirada" checked><span><strong>Retirada</strong><small>a combinar</small></span></label><label class="pay"><input type="radio" name="delivery" value="entrega"><span><strong>Entrega</strong><small>a combinar</small></span></label></div></fieldset>' +
       '<div class="field" id="addrField" hidden><label for="coAddr">Endereço para entrega</label><textarea id="coAddr" name="address" rows="2" maxlength="250" autocomplete="street-address">' + esc(saved.address || '') + '</textarea><small class="err" role="alert"></small></div>' +
       payPronta + payEnc +
-      (b.enc.length ? '<p class="note-box"><strong>Sob encomenda · compra coletiva:</strong> ' + esc(encNoteText()) + '</p>' : '') +
+      (b.enc.length ? '<p class="note-box"><strong>Sob encomenda' + (lotsOn() ? ' · compra coletiva' : '') + ':</strong> ' + esc(encNoteText()) + '</p>' : '') +
       '<div class="field"><label for="coNotes">Observações (opcional)</label><textarea id="coNotes" name="notes" rows="2" maxlength="400" placeholder="Ex.: prefiro retirar no sábado"></textarea></div>' +
       '<div class="summary">' + (both ? '<div class="row"><span>Pronta entrega</span><span>' + brl(b.prontaCents) + '</span></div><div class="row"><span>Sob encomenda</span><span>' + brl(b.encCents) + '</span></div>' : '<div class="row"><span>' + bagCount() + (bagCount() === 1 ? ' peça' : ' peças') + '</span><span>' + brl(t) + '</span></div>') +
       '<div class="row total"><span>Total</span><span>' + brl(t) + '</span></div></div>' +
@@ -438,9 +442,9 @@
         if (o.pronta_cents) msg = msg.concat(['', '*PRONTA ENTREGA*'], lines('pronta'), ['Subtotal: ' + brl(o.pronta_cents), 'Pagamento: ' + PL[pay.value]]);
         if (o.encomenda_cents) {
           var lotTxt = Object.keys(o.lots || {}).map(function (k) { var l = o.lots[k]; return '- ' + k + ': lote nº ' + l.number + (l.status === 'fechado' ? ' FECHOU com ' + l.qty + ' peças!' : ' com ' + l.qty + ' de ' + l.size + ' peças'); });
-          msg = msg.concat(['', '*SOB ENCOMENDA (compra coletiva)*'], lines('encomenda'), ['Subtotal: ' + brl(o.encomenda_cents), 'Pagamento: ' + PL[payE.value]]);
+          msg = msg.concat(['', (lotsOn() ? '*SOB ENCOMENDA (compra coletiva)*' : '*SOB ENCOMENDA (pedir ao fornecedor)*')], lines('encomenda'), ['Subtotal: ' + brl(o.encomenda_cents), 'Pagamento: ' + PL[payE.value]]);
           if (o.sinal_cents != null && o.sinal_cents < o.encomenda_cents) msg.push('Sinal agora: ' + brl(o.sinal_cents) + ' · restante ' + brl(o.encomenda_cents - o.sinal_cents) + ' quando o lote fechar');
-          msg = msg.concat(['Lotes:'], lotTxt);
+          if (lotTxt.length) msg = msg.concat(['Lotes:'], lotTxt);
         }
         msg = msg.concat(['', '*Total:* ' + brl(o.total_cents), '*Recebimento:* ' + (delivery === 'entrega' ? 'Entrega - ' + c.address : 'Retirada (combinar com a lojista)')]);
         if (notes) msg.push('*Obs.:* ' + notes);

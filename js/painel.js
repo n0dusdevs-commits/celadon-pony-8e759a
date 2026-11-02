@@ -103,7 +103,7 @@
   }
 
   /* =================== NAVEGAÇÃO =================== */
-  var TITLES = { inicio: 'Início', pedidos: 'Pedidos', parcelas: 'Parcelas', encomendas: 'Lotes · compra coletiva', produtos: 'Produtos', repasse: 'Repasse', loja: 'Minha loja' };
+  var TITLES = { inicio: 'Início', pedidos: 'Pedidos', parcelas: 'Parcelas', encomendas: 'Comprar no fornecedor', produtos: 'Produtos', repasse: 'Repasse', loja: 'Minha loja' };
   var VIEWS = {};
   function go(v) {
     if (!VIEWS[v]) v = 'inicio';
@@ -430,6 +430,7 @@
   var LOT_ST = { aberto: ['Aberto', 'aberta'], fechado: ['Fechado · comprar', 'novo'], comprado: ['Comprado no fornecedor', 'confirmado'], entregue: ['Entregue', 'entregue'] };
   var lotFilter = 'ativos';
   VIEWS.encomendas = function () {
+    if (SETTINGS.encomenda_lotes !== true) return comprasView();
     var ql = sb.from('lots').select('*').order('created_at', { ascending: false });
     if (lotFilter === 'ativos') ql = ql.neq('status', 'entregue'); else ql = ql.eq('status', 'entregue');
     return Promise.all([ql, sb.from('orders').select('id,code,customer_name,customer_phone,items,sinal_cents,status').eq('has_encomenda', true).neq('status', 'cancelado').order('created_at').limit(1000)]).then(function (r) {
@@ -491,6 +492,24 @@
     });
   };
 
+  function supplierLink(ref) {
+    if (!ref) return '';
+    var slug = String(ref).replace(/^fbm:/, '');
+    if (/^bone-\d+$/.test(slug)) slug = 'bone-five-original-%f0%9f%8f%b7%ef%b8%8f-' + slug.split('-')[1];
+    return ' <a class="linklike" href="https://fabricabasicmen.com.br/product/' + slug + '/" target="_blank" rel="noopener">ver no fornecedor</a>';
+  }
+  function comprasView() {
+    return sb.rpc('encomenda_compras').then(function (r) {
+      var rows = ok(r) || [];
+      var tq = rows.reduce(function (s, x) { return s + Number(x.qty); }, 0), tc = rows.reduce(function (s, x) { return s + Number(x.total_cents); }, 0);
+      $('#view').innerHTML = '<div class="bar-tools no-print"><span class="muted">Peças sob encomenda de vendas <strong>confirmadas</strong> que ainda não foram entregues. Marque o pedido como “entregue” quando a cliente receber.</span><button type="button" class="btn btn-dark btn-sm" id="printEnc">Imprimir / salvar PDF</button></div>' +
+        '<div class="rep-wrap"><table class="rep"><thead><tr><th>Peça</th><th>Tamanho</th><th>Cor</th><th class="n">Qtd.</th><th class="n">Vendido por</th><th>Pedidos</th></tr></thead><tbody>' +
+        (rows.length ? rows.map(function (x) { return '<tr><td>' + esc(x.name) + supplierLink(x.ref) + '</td><td>' + esc(x.size || '–') + '</td><td>' + esc(x.color || '–') + '</td><td class="n">' + x.qty + '</td><td class="n">' + brl(Number(x.total_cents)) + '</td><td>' + esc(x.orders) + '</td></tr>'; }).join('') : '<tr><td colspan="6" class="muted">Nada para comprar no fornecedor agora.</td></tr>') +
+        '</tbody><tfoot><tr><td colspan="3">Total</td><td class="n">' + tq + '</td><td class="n">' + brl(tc) + '</td><td></td></tr></tfoot></table></div>';
+      $('#printEnc').addEventListener('click', function () { window.print(); });
+    });
+  }
+
   /* =================== MINHA LOJA =================== */
   VIEWS.loja = function () {
     return loadSettings().then(function () {
@@ -508,6 +527,7 @@
         inp('installments_note', 'Aviso que a cliente vê sobre o parcelamento', { area: true, full: true }) +
         '<h3 class="full">Peças sob encomenda</h3>' +
         '<div class="field"><label for="s_enc">Vender sob encomenda</label><select id="s_enc" name="encomenda_enabled"><option value="1"' + (s.encomenda_enabled !== false ? ' selected' : '') + '>Sim</option><option value="0"' + (s.encomenda_enabled === false ? ' selected' : '') + '>Pausar encomendas</option></select></div>' +
+        '<div class="field"><label for="s_lotes">Compra coletiva (lotes)</label><select id="s_lotes" name="encomenda_lotes"><option value="0"' + (s.encomenda_lotes !== true ? ' selected' : '') + '>Desligada</option><option value="1"' + (s.encomenda_lotes === true ? ' selected' : '') + '>Ligada</option></select><small>Ligada: os pedidos de cada linha se juntam em lotes, com sinal. Desligada: encomenda simples.</small></div>' +
         '<div class="field"><label for="s_lote">Peças por lote (compra coletiva)</label><input id="s_lote" name="encomenda_lote_size" inputmode="numeric" value="' + (Number(s.encomenda_lote_size) || 6) + '"><small>Cada linha (categoria) junta pedidos de várias clientes até completar este número. Vale para os próximos lotes.</small></div>' +
         '<div class="field"><label for="s_sinal">Sinal no pedido (%)</label><input id="s_sinal" name="encomenda_sinal_pct" inputmode="numeric" value="' + (s.encomenda_sinal_pct == null ? 50 : s.encomenda_sinal_pct) + '"><small>Quanto a cliente paga ao pedir. O restante é pago quando o lote fecha. Use 0 para sem sinal ou 100 para tudo no pedido.</small></div>' +
         inp('encomenda_prazo', 'Prazo estimado de chegada (opcional)', { ph: 'Ex.: 7 a 15 dias úteis' }) +
@@ -529,6 +549,7 @@
         var ls = Number(f.encomenda_lote_size.value), sp = Number(String(f.encomenda_sinal_pct.value).replace('%', '').trim());
         if (!(ls >= 1 && ls <= 500 && Math.floor(ls) === ls)) { err.textContent = 'Peças por lote: use um número inteiro, ex.: 6.'; return; }
         if (!(sp >= 0 && sp <= 100)) { err.textContent = 'Sinal: use um número de 0 a 100.'; return; }
+        d.encomenda_lotes = f.encomenda_lotes.value === '1';
         d.encomenda_lote_size = ls; d.encomenda_sinal_pct = Math.round(sp); d.encomenda_min_cents = 0; d.encomenda_prazo = f.encomenda_prazo.value.trim(); d.encomenda_note = f.encomenda_note.value.trim();
         if (!d.store_name) d.store_name = 'May Modas';
         if (!d.hero_title) d.hero_title = MM.DEFAULTS.hero_title;
